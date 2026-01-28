@@ -1,0 +1,5 @@
+FROM python:3.11-slim
+RUN pip install ansible ansible-lint
+WORKDIR /app
+COPY . .
+CMD ["ansible-lint", ".", "||", "ansible-playbook", "--syntax-check", "*.yml"]

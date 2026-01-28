@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 from .analyzer import analyze_code, detect_language, SUPPORTED_LANGUAGES, add_fix_comments
+from .sandbox import Sandbox, detect_project_language, create_all_dockerfiles, LANGUAGE_DOCKERFILES
 
 
 def main():
@@ -27,7 +28,27 @@ def main():
     parser.add_argument('--json', action='store_true', help='Output as JSON')
     parser.add_argument('--version', action='version', version='pactfix 1.0.0')
     
+    # New options for project scanning and sandbox
+    parser.add_argument('--path', help='Project path to scan and fix all files')
+    parser.add_argument('--sandbox', action='store_true', help='Run fixes in Docker sandbox')
+    parser.add_argument('--sandbox-only', action='store_true', help='Only setup sandbox without fixing')
+    parser.add_argument('--test', action='store_true', help='Run tests in sandbox after fixing')
+    parser.add_argument('--init-dockerfiles', help='Create Dockerfiles for all languages in specified directory')
+    
     args = parser.parse_args()
+    
+    # Initialize Dockerfiles for all languages
+    if args.init_dockerfiles:
+        return init_dockerfiles(args.init_dockerfiles)
+    
+    # Project-wide scanning with --path
+    if args.path:
+        return process_project(args.path, args.comment, args.sandbox, args.test, args.verbose)
+    
+    # Sandbox-only mode
+    if args.sandbox_only:
+        input_path = args.input or '.'
+        return setup_sandbox_only(input_path, args.verbose)
     
     if args.fix_all:
         return fix_all_examples(args.verbose, args.comment)
@@ -349,6 +370,211 @@ def fix_all_examples(verbose: bool = False, comment: bool = False) -> int:
     print(f"\n✅ Raport zapisany: {summary_path}")
     
     return 0
+
+
+def init_dockerfiles(output_dir: str) -> int:
+    """Create Dockerfiles for all supported languages."""
+    output_path = Path(output_dir)
+    print(f"🐳 Creating Dockerfiles in {output_path}\n")
+    
+    try:
+        created = create_all_dockerfiles(output_path)
+        print(f"\n✅ Created {len(created)} Dockerfiles")
+        return 0
+    except Exception as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        return 1
+
+
+def setup_sandbox_only(project_path: str, verbose: bool = False) -> int:
+    """Setup sandbox without running fixes."""
+    path = Path(project_path).resolve()
+    
+    if not path.exists():
+        print(f"❌ Path does not exist: {path}", file=sys.stderr)
+        return 1
+    
+    print(f"🔧 Setting up sandbox for: {path}\n")
+    
+    sandbox = Sandbox(str(path))
+    sandbox.setup()
+    
+    print(f"\n✅ Sandbox ready in: {sandbox.sandbox_dir}")
+    print(f"📋 Language detected: {sandbox.language}")
+    print(f"\nTo build and run:")
+    print(f"  cd {sandbox.sandbox_dir}")
+    print(f"  docker-compose up --build")
+    
+    return 0
+
+
+def process_project(project_path: str, comment: bool = False, sandbox: bool = False,
+                    run_tests: bool = False, verbose: bool = False) -> int:
+    """Process entire project - scan, fix all files, optionally run in sandbox."""
+    path = Path(project_path).resolve()
+    
+    if not path.exists():
+        print(f"❌ Path does not exist: {path}", file=sys.stderr)
+        return 1
+    
+    print(f"🔍 Pactfix - scanning project: {path}\n")
+    
+    # Detect project language
+    language, stats = detect_project_language(path)
+    print(f"📋 Detected project language: {language}")
+    if verbose and stats.get('all_scores'):
+        print(f"   Scores: {stats['all_scores']}")
+    print()
+    
+    # Find all files to process
+    extensions = ['.sh', '.py', '.php', '.js', '.ts', '.sql', '.tf', '.yml', '.yaml', 
+                  '.conf', '.go', '.rs', '.java', '.cs', '.rb', '.html', '.css']
+    
+    files_to_process = []
+    for ext in extensions:
+        files_to_process.extend(path.rglob(f'*{ext}'))
+    
+    # Add Dockerfiles and special files
+    files_to_process.extend(path.rglob('Dockerfile'))
+    files_to_process.extend(path.rglob('Makefile'))
+    
+    # Filter out hidden directories and common excludes
+    exclude_dirs = {'.git', '.pactfix', 'node_modules', '__pycache__', 'venv', '.venv', 
+                    'vendor', 'target', 'build', 'dist', '.idea', '.vscode'}
+    
+    files_to_process = [
+        f for f in files_to_process 
+        if not any(excl in f.parts for excl in exclude_dirs)
+        and f.is_file()
+    ]
+    
+    if not files_to_process:
+        print(f"⚠️  No files found to analyze in: {path}")
+        return 0
+    
+    print(f"📁 Found {len(files_to_process)} files to analyze\n")
+    
+    # Process files
+    results = []
+    fixed_files = {}
+    total_errors = 0
+    total_warnings = 0
+    total_fixes = 0
+    
+    # Create output directory for fixed files
+    pactfix_dir = path / '.pactfix'
+    fixed_dir = pactfix_dir / 'fixed'
+    fixed_dir.mkdir(parents=True, exist_ok=True)
+    
+    for file_path in sorted(set(files_to_process)):
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                code = f.read()
+            
+            result = analyze_code(code, str(file_path))
+            
+            if comment and result.fixes:
+                result.fixed_code = add_fix_comments(result)
+            
+            total_errors += len(result.errors)
+            total_warnings += len(result.warnings)
+            total_fixes += len(result.fixes)
+            
+            # Save fixed file if there are fixes
+            if result.fixes:
+                rel_path = file_path.relative_to(path)
+                fixed_file_path = fixed_dir / rel_path
+                fixed_file_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                with open(fixed_file_path, 'w', encoding='utf-8') as f:
+                    f.write(result.fixed_code)
+                
+                fixed_files[str(rel_path)] = result.fixed_code
+            
+            # Print status
+            status = "✅" if len(result.errors) == 0 else "❌"
+            rel_path = file_path.relative_to(path)
+            
+            if result.fixes or result.errors or verbose:
+                print(f"{status} {rel_path}: {len(result.errors)}E {len(result.warnings)}W {len(result.fixes)}F [{result.language}]")
+                
+                if verbose:
+                    for err in result.errors:
+                        print(f"   ❌ L{err.line}: [{err.code}] {err.message}")
+                    for fix in result.fixes:
+                        print(f"   🔧 L{fix.line}: {fix.description}")
+            
+            results.append({
+                'file': str(rel_path),
+                'language': result.language,
+                'errors': len(result.errors),
+                'warnings': len(result.warnings),
+                'fixes': len(result.fixes)
+            })
+            
+        except Exception as e:
+            if verbose:
+                print(f"❌ {file_path}: {e}")
+    
+    # Print summary
+    print(f"\n{'='*60}")
+    print(f"📊 Project Summary: {path.name}")
+    print(f"   📁 Files analyzed: {len(results)}")
+    print(f"   ❌ Errors:   {total_errors}")
+    print(f"   ⚠️  Warnings: {total_warnings}")
+    print(f"   🔧 Fixes:    {total_fixes}")
+    
+    if fixed_files:
+        print(f"\n   📄 Fixed files saved to: {fixed_dir}")
+    
+    # Save report
+    report_path = pactfix_dir / 'report.json'
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump({
+            'timestamp': datetime.now().isoformat(),
+            'project_path': str(path),
+            'project_language': language,
+            'total_files': len(results),
+            'total_errors': total_errors,
+            'total_warnings': total_warnings,
+            'total_fixes': total_fixes,
+            'comment_mode': comment,
+            'files': results
+        }, f, indent=2, ensure_ascii=False)
+    
+    print(f"   📋 Report saved to: {report_path}")
+    
+    # Sandbox mode
+    if sandbox:
+        print(f"\n{'='*60}")
+        print("🐳 Setting up Docker sandbox...")
+        
+        sandbox_env = Sandbox(str(path))
+        sandbox_env.setup()
+        
+        if fixed_files:
+            print(f"\n📦 Copying {len(fixed_files)} fixed files to sandbox...")
+            sandbox_env.copy_fixed_files(fixed_files)
+        
+        # Build
+        success, output = sandbox_env.build()
+        
+        if success and run_tests:
+            print(f"\n🧪 Running tests...")
+            test_success, test_output = sandbox_env.test()
+            
+            # Save test results
+            test_report_path = pactfix_dir / 'test_results.txt'
+            with open(test_report_path, 'w') as f:
+                f.write(test_output)
+            print(f"   📋 Test results saved to: {test_report_path}")
+        
+        print(f"\n✅ Sandbox ready in: {sandbox_env.sandbox_dir}")
+        print(f"\nTo run manually:")
+        print(f"  cd {sandbox_env.sandbox_dir}")
+        print(f"  docker-compose up --build")
+    
+    return 0 if total_errors == 0 else 1
 
 
 if __name__ == '__main__':

@@ -234,3 +234,6 @@ tmp/
 backend/*.db
 *.db
 backend/*.sqlite
+
+# Pactfix sandbox
+.pactfix/
