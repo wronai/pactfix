@@ -21,10 +21,15 @@ WORKDIR /app
 COPY app /app/
 COPY server.py /app/server.py
 
-# Set environment variables
+# Copy .env file if it exists
+COPY .env* /app/ 2>/dev/null || true
+
+# Set default environment variables (can be overridden by .env)
 ENV PORT=8080
 ENV APP_DIR=/app
 ENV PYTHONUNBUFFERED=1
+ENV PACTFIX_API_URL=http://pactfix-api:5000
+ENV PACTFIX_EXAMPLES_DIR=examples
 
 # Expose port
 EXPOSE 8080

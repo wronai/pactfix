@@ -12,6 +12,8 @@ from datetime import datetime
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional
 
+import pytest
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -21,6 +23,7 @@ from pactfix.analyzer import analyze_code, detect_language, add_fix_comments, SU
 @dataclass
 class TestResult:
     """Result of a single test case."""
+    __test__ = False
     language: str
     file_path: str
     errors_found: int
@@ -34,6 +37,7 @@ class TestResult:
 @dataclass
 class TestSuiteResult:
     """Result of the entire test suite."""
+    __test__ = False
     total_tests: int
     passed_tests: int
     failed_tests: int
@@ -108,7 +112,7 @@ def get_fixtures_dir() -> Path:
     return Path(__file__).parent / 'fixtures'
 
 
-def test_language(language: str, fixture_file: str, expected_min: int) -> TestResult:
+def run_language_check(language: str, fixture_file: str, expected_min: int) -> TestResult:
     """Test a single language fixture."""
     fixtures_dir = get_fixtures_dir()
     file_path = fixtures_dir / fixture_file
@@ -177,7 +181,7 @@ def test_language(language: str, fixture_file: str, expected_min: int) -> TestRe
     )
 
 
-def test_fix_comments(language: str, fixture_file: str) -> bool:
+def run_fix_comments_check(language: str, fixture_file: str) -> bool:
     """Test that fix comments are properly added."""
     fixtures_dir = get_fixtures_dir()
     file_path = fixtures_dir / fixture_file
@@ -202,6 +206,26 @@ def test_fix_comments(language: str, fixture_file: str) -> bool:
     return 'pactfix:' in fixed_with_comments
 
 
+@pytest.mark.parametrize(
+    "language,fixture_file,expected_min",
+    [
+        (language, fixture_file, EXPECTED_ISSUES.get(language, 3))
+        for language, fixture_file in FIXTURE_FILES.items()
+    ],
+)
+def test_language(language: str, fixture_file: str, expected_min: int) -> None:
+    result = run_language_check(language, fixture_file, expected_min)
+    assert result.passed, "\n".join(result.details) if result.details else "Language check failed"
+
+
+@pytest.mark.parametrize(
+    "language,fixture_file",
+    [(language, fixture_file) for language, fixture_file in FIXTURE_FILES.items()],
+)
+def test_fix_comments(language: str, fixture_file: str) -> None:
+    assert run_fix_comments_check(language, fixture_file)
+
+
 def run_all_tests(verbose: bool = True) -> TestSuiteResult:
     """Run all tests and return results."""
     start_time = datetime.now()
@@ -220,7 +244,7 @@ def run_all_tests(verbose: bool = True) -> TestSuiteResult:
         if verbose:
             print(f"Testing {language}...", end=" ")
         
-        result = test_language(language, fixture_file, expected_min)
+        result = run_language_check(language, fixture_file, expected_min)
         results.append(result)
         languages_tested.append(language)
         
@@ -332,7 +356,7 @@ def main():
         
         fixture_file = FIXTURE_FILES[args.language]
         expected_min = EXPECTED_ISSUES.get(args.language, 3)
-        result = test_language(args.language, fixture_file, expected_min)
+        result = run_language_check(args.language, fixture_file, expected_min)
         
         print(f"\n{args.language}: {'PASS' if result.passed else 'FAIL'}")
         print(f"  Errors:   {result.errors_found}")

@@ -4,6 +4,13 @@ import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, use system environment only
+
 from .analyzer import analyze_code, detect_language, SUPPORTED_LANGUAGES
 
 app = Flask(__name__)

@@ -7,6 +7,13 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, use system environment only
+
 from .analyzer import analyze_code, detect_language, SUPPORTED_LANGUAGES, add_fix_comments
 from .sandbox import Sandbox, detect_project_language, create_all_dockerfiles, LANGUAGE_DOCKERFILES
 
