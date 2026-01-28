@@ -1,6 +1,25 @@
-# pactfix Code Analyzer (Python)
+# Pactfix
 
-Multi-language code analysis and auto-fix CLI tool.
+Multi-language code and config file analyzer and fixer.
+
+## Supported Languages
+
+### Code
+- Bash
+- Python
+- PHP
+- JavaScript
+- Node.js
+
+### Config Files
+- Dockerfile
+- docker-compose.yml
+- SQL
+- Terraform
+- Kubernetes YAML
+- nginx config
+- GitHub Actions
+- Ansible playbooks
 
 ## Installation
 
@@ -8,42 +27,42 @@ Multi-language code analysis and auto-fix CLI tool.
 pip install -e .
 ```
 
-## Usage
+## CLI Usage
 
 ```bash
-# Analyze and fix a file
-pactfix input.py -o output.py
+# Analyze single file
+pactfix input.py -o output.py --log-file log.json -v
 
-# Analyze with logs
-pactfix script.sh --log-file analysis.json
+# Batch process directory
+pactfix --batch ./src
 
-# Force language detection
-pactfix code.txt -l python
+# Fix all example files
+pactfix --fix-all
 
-# JSON output
-pactfix input.js --json
-
-# Only analyze, don't write fixed file
-pactfix input.php --no-fix
+# Output as JSON
+pactfix input.py --json
 ```
 
-## Supported Languages
-
-- **Bash** - ShellCheck-style rules
-- **Python** - PEP8 and common issues
-- **PHP** - Security and deprecation warnings
-- **JavaScript** - ES6+ best practices
-- **Node.js** - Server-side specific rules
-
-## Example
+## API Server
 
 ```bash
-pactfix examples/python/faulty.py -o fixed.py --log-file log.json -v
+# Run server
+python -m pactfix.server
+
+# Or with custom port
+PORT=8000 python -m pactfix.server
 ```
 
-## Output
+### Endpoints
 
-The tool produces:
-1. **Fixed file** - Code with automatic fixes applied
-2. **Log file** (optional) - JSON with detailed analysis results
-3. **Console output** - Summary of errors, warnings, and fixes
+- `GET /api/health` - Health check
+- `POST /api/analyze` - Analyze code
+- `POST /api/detect` - Detect language
+- `GET /api/languages` - List supported languages
+
+## Docker
+
+```bash
+docker build -t pactfix .
+docker run -p 5000:5000 pactfix
+```

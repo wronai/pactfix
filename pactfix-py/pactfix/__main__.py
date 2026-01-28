@@ -1,4 +1,5 @@
-"""Entry point for python -m pactfix"""
+"""Entry point for running pactfix as a module."""
+
 from .cli import main
 
 if __name__ == '__main__':
