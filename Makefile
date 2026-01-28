@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help test test-frontend test-backend test-pactfix lint publish build-pactfix bump-patch clean
+.PHONY: help test test-frontend test-backend test-pactfix test-sandbox lint publish build-pactfix bump-patch clean
 
 PACTFIX_DIR ?= pactfix-py
 

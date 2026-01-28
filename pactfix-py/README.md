@@ -33,7 +33,7 @@ print("hello")
 
 ```bash
 pactfix --path ./my-project --sandbox
-pactfix --path ./my-project --sandbox --test  # also run tests
+pactfix --path ./pactfix-py/test-projects/nodejs-project --sandbox --test  # also run tests
 ```
 
 **What it does:**

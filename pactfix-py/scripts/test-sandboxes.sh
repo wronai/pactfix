@@ -1,0 +1,132 @@
+#!/bin/bash
+# Test all sandbox environments for pactfix
+# Usage: ./scripts/test-sandboxes.sh
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PACTFIX_DIR="$(dirname "$SCRIPT_DIR")"
+TEST_PROJECTS_DIR="${PACTFIX_DIR}/test-projects"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+PASSED=0
+FAILED=0
+RESULTS=()
+
+cleanup_sandbox() {
+    local project_path="$1"
+    rm -rf "${project_path}/.pactfix" 2>/dev/null || true
+}
+
+test_project() {
+    local project_name="$1"
+    local project_path="${TEST_PROJECTS_DIR}/${project_name}"
+    
+    echo -e "\n${BLUE}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}Testing: ${project_name}${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+    
+    if [[ ! -d "$project_path" ]]; then
+        echo -e "${RED}❌ Project directory not found: ${project_path}${NC}"
+        FAILED=$((FAILED + 1))
+        RESULTS+=("❌ ${project_name}: Directory not found")
+        return 1
+    fi
+    
+    # Cleanup previous sandbox
+    cleanup_sandbox "$project_path"
+    
+    # Run pactfix with sandbox
+    echo -e "${YELLOW}Running: pactfix --path ${project_path} --sandbox${NC}"
+    
+    if python -m pactfix --path "$project_path" --sandbox 2>&1; then
+        # Check if sandbox was created
+        if [[ -d "${project_path}/.pactfix" ]]; then
+            echo -e "${GREEN}✅ Sandbox created${NC}"
+            
+            # Check for required files
+            local required_files=("Dockerfile" "docker-compose.yml" "report.json")
+            local all_present=true
+            
+            for file in "${required_files[@]}"; do
+                if [[ -f "${project_path}/.pactfix/${file}" ]]; then
+                    echo -e "   ${GREEN}✓${NC} ${file}"
+                else
+                    echo -e "   ${RED}✗${NC} ${file} missing"
+                    all_present=false
+                fi
+            done
+            
+            # Check if fixed files exist
+            if [[ -d "${project_path}/.pactfix/fixed" ]]; then
+                fixed_count=$(find "${project_path}/.pactfix/fixed" -type f | wc -l)
+                echo -e "   ${GREEN}✓${NC} Fixed files: ${fixed_count}"
+            fi
+            
+            # Check report for fixes
+            if [[ -f "${project_path}/.pactfix/report.json" ]]; then
+                fixes=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_fixes', 0))" 2>/dev/null || echo "0")
+                errors=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_errors', 0))" 2>/dev/null || echo "0")
+                echo -e "   📊 Errors detected: ${errors}, Fixes applied: ${fixes}"
+            fi
+            
+            if $all_present; then
+                PASSED=$((PASSED + 1))
+                RESULTS+=("✅ ${project_name}: Sandbox OK (${fixes} fixes)")
+            else
+                FAILED=$((FAILED + 1))
+                RESULTS+=("⚠️  ${project_name}: Sandbox incomplete")
+            fi
+        else
+            echo -e "${RED}❌ Sandbox directory not created${NC}"
+            FAILED=$((FAILED + 1))
+            RESULTS+=("❌ ${project_name}: No .pactfix directory")
+        fi
+    else
+        echo -e "${RED}❌ Pactfix command failed${NC}"
+        FAILED=$((FAILED + 1))
+        RESULTS+=("❌ ${project_name}: Command failed")
+    fi
+}
+
+echo -e "${BLUE}"
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║           PACTFIX SANDBOX TEST SUITE                     ║"
+echo "╚══════════════════════════════════════════════════════════╝"
+echo -e "${NC}"
+
+# Test each project
+PROJECTS=("python-project" "nodejs-project" "bash-project" "go-project" "dockerfile-project")
+
+for project in "${PROJECTS[@]}"; do
+    test_project "$project"
+done
+
+# Summary
+echo -e "\n${BLUE}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}TEST SUMMARY${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+
+for result in "${RESULTS[@]}"; do
+    echo -e "  $result"
+done
+
+echo -e "\n${GREEN}Passed: ${PASSED}${NC} | ${RED}Failed: ${FAILED}${NC}"
+
+# Cleanup all sandboxes
+echo -e "\n${YELLOW}Cleaning up sandboxes...${NC}"
+for project in "${PROJECTS[@]}"; do
+    cleanup_sandbox "${TEST_PROJECTS_DIR}/${project}"
+done
+echo -e "${GREEN}Done${NC}"
+
+# Exit with appropriate code
+if [[ $FAILED -gt 0 ]]; then
+    exit 1
+fi
+exit 0
