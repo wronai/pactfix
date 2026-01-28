@@ -1299,7 +1299,7 @@ def analyze_github_actions(code: str) -> dict:
             })
         
         # Check for hardcoded secrets
-        if re.search(r'(password|token|key|secret)\s*[:=]\s*["\'][^$\{]', stripped, re.IGNORECASE):
+        if re.search(r'(password|token|key|secret)\s*[:=]\s*(?!\$\{\{)(?!\$\{)(?!\$)\S+', stripped, re.IGNORECASE):
             errors.append({
                 'line': i, 'column': 1, 'code': 'GHA003',
                 'message': 'Hardcoded secret - użyj ${{ secrets.NAME }}'
@@ -1368,11 +1368,128 @@ def analyze_ansible(code: str) -> dict:
     return {'errors': errors, 'warnings': warnings, 'fixes': fixes}
 
 
+def analyze_markdown(code: str) -> dict:
+    """Analyze Markdown by extracting fenced code blocks and analyzing each block."""
+    errors = []
+    warnings = []
+    fixes = []
+ 
+    lines = code.split('\n')
+    out_lines = []
+ 
+    in_fence = False
+    fence_lang = None
+    fence_start_line = None
+    block_lines = []
+ 
+    blocks = []
+ 
+    def _flush_block(end_fence_line: int):
+        nonlocal errors, warnings, fixes, out_lines, block_lines, fence_lang, fence_start_line, blocks
+ 
+        block_code = '\n'.join(block_lines)
+        forced = None
+        if fence_lang:
+            lang = fence_lang.strip().lower()
+            lang_aliases = {
+                'sh': 'bash',
+                'shell': 'bash',
+                'bash': 'bash',
+                'python': 'python',
+                'py': 'python',
+                'php': 'php',
+                'js': 'javascript',
+                'javascript': 'javascript',
+                'node': 'nodejs',
+                'nodejs': 'nodejs',
+                'docker': 'dockerfile',
+                'dockerfile': 'dockerfile',
+                'sql': 'sql',
+                'tf': 'terraform',
+                'terraform': 'terraform',
+                'k8s': 'kubernetes',
+                'kubernetes': 'kubernetes',
+                'nginx': 'nginx',
+                'github-actions': 'github-actions',
+                'ansible': 'ansible',
+                'markdown': 'markdown',
+            }
+            forced = lang_aliases.get(lang, lang)
+        block_result = analyze_code_multi(block_code, force_language=forced)
+ 
+        fixed_block = block_result.get('fixedCode', block_code)
+        fixed_block_lines = fixed_block.split('\n') if fixed_block else ['']
+ 
+        content_start_line = (fence_start_line or 1) + 1
+        for e in block_result.get('errors', []) or []:
+            errors.append({
+                **e,
+                'line': content_start_line + (e.get('line', 1) - 1),
+            })
+        for w in block_result.get('warnings', []) or []:
+            warnings.append({
+                **w,
+                'line': content_start_line + (w.get('line', 1) - 1),
+            })
+        for f in block_result.get('fixes', []) or []:
+            fixes.append({
+                **f,
+                'line': content_start_line + (f.get('line', 1) - 1),
+            })
+ 
+        out_lines.extend(fixed_block_lines)
+ 
+        blocks.append({
+            'language': forced or block_result.get('language') or None,
+            'start_line': fence_start_line,
+            'end_line': end_fence_line,
+            'content_start_line': content_start_line,
+            'errors': len(block_result.get('errors', []) or []),
+            'warnings': len(block_result.get('warnings', []) or []),
+            'fixes': len(block_result.get('fixes', []) or []),
+        })
+ 
+    for idx, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if not in_fence:
+            if stripped.startswith('```'):
+                in_fence = True
+                fence_lang = stripped[3:].strip() or None
+                fence_start_line = idx
+                block_lines = []
+                out_lines.append(line)
+            else:
+                out_lines.append(line)
+        else:
+            if stripped.startswith('```'):
+                _flush_block(end_fence_line=idx)
+                in_fence = False
+                fence_lang = None
+                fence_start_line = None
+                block_lines = []
+                out_lines.append(line)
+            else:
+                block_lines.append(line)
+ 
+    # Unclosed fence: keep original content
+    if in_fence:
+        out_lines.extend(block_lines)
+ 
+    return {
+        'errors': errors,
+        'warnings': warnings,
+        'fixes': fixes,
+        'fixedCode': '\n'.join(out_lines),
+        'context': {
+            'blocks': blocks,
+        },
+    }
+
+
 def detect_language(code: str, filename: str = None) -> str:
     """Detect the programming language of the code."""
     lines = code.strip().split('\n')
     first_line = lines[0] if lines else ''
-    
     # Check filename first for config files
     if filename:
         fn_lower = filename.lower()
@@ -1385,6 +1502,8 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'php'
         if fn_lower.endswith(('.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx')):
             return 'javascript'
+        if fn_lower.endswith(('.md', '.markdown')):
+            return 'markdown'
 
         if fn_lower == 'dockerfile' or fn_lower.endswith('/dockerfile'):
             return 'dockerfile'
@@ -1534,6 +1653,7 @@ def analyze_code_multi(code: str, force_language: str = None, filename: str = No
         'nginx': analyze_nginx_config,
         'github-actions': analyze_github_actions,
         'ansible': analyze_ansible,
+        'markdown': analyze_markdown,
     }
     
     # Code analyzers
@@ -1550,7 +1670,7 @@ def analyze_code_multi(code: str, force_language: str = None, filename: str = No
         result['warnings'] = lang_result.get('warnings', [])
         result['fixes'] = lang_result.get('fixes', [])
         result['context'] = lang_result.get('context', {})
-        result['fixedCode'] = code  # Config files usually don't have auto-fix
+        result['fixedCode'] = lang_result.get('fixedCode', code)
         return result
     
     if language in code_analyzers:
@@ -1697,6 +1817,7 @@ class DebugHandler(SimpleHTTPRequestHandler):
                 data = json.loads(body)
                 code = data.get('code', '')
                 filename = data.get('filename')
+                force_language = data.get('language')
                 
                 logger.info(f"Analyzing code ({len(code)} chars)")
                 
@@ -1707,7 +1828,7 @@ class DebugHandler(SimpleHTTPRequestHandler):
                 
                 # Fallback to local analysis
                 if result is None:
-                    result = analyze_code_multi(code, filename=filename)
+                    result = analyze_code_multi(code, force_language=force_language, filename=filename)
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')

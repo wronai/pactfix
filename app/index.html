@@ -274,6 +274,14 @@
             user-select: none;
             border-right: 1px solid var(--border-color);
             min-width: 50px;
+            white-space: pre;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .line-number {
+            line-height: 1.6;
         }
 
         .code-input {
@@ -302,7 +310,6 @@
             font-size: 14px;
             line-height: 1.6;
             overflow: auto;
-            white-space: pre-wrap;
         }
 
         /* Syntax highlighting */
@@ -779,14 +786,19 @@
             document.getElementById('charCount').textContent = code.length;
         }
 
+        function renderLineNumbers(container, lines) {
+            let html = '';
+            const count = Math.max(1, lines || 1);
+            for (let i = 1; i <= count; i++) {
+                html += `<span class="line-number">${i}</span>`;
+            }
+            container.innerHTML = html;
+        }
+
         function updateLineNumbers() {
             const code = codeInput.value;
             const lines = code.split('\n').length;
-            let numbers = '';
-            for (let i = 1; i <= lines; i++) {
-                numbers += i + '\n';
-            }
-            inputLineNumbers.textContent = numbers || '1';
+            renderLineNumbers(inputLineNumbers, lines);
         }
 
         function syncScroll() {
@@ -803,7 +815,7 @@
                         <p>Wklej kod w lewym panelu, aby zobaczyć analizę i poprawki w czasie rzeczywistym.</p>
                     </div>
                 `;
-                outputLineNumbers.textContent = '1';
+                renderLineNumbers(outputLineNumbers, 1);
                 document.getElementById('errorCount').textContent = '0';
                 document.getElementById('fixedCount').textContent = '0';
                 document.getElementById('warningCount').textContent = '0';
@@ -855,13 +867,9 @@
             let html = '';
             let lineNumber = 1;
             const lines = result.fixedCode.split('\n');
-            
-            // Create line number column
-            let lineNums = '';
-            
+
             lines.forEach((line, index) => {
                 const lineNum = index + 1;
-                lineNums += lineNum + '\n';
                 
                 // Check if this line has an error
                 const errors = (result.errors || []).filter(e => e.line === lineNum);
@@ -899,8 +907,8 @@
                     }
                 });
             });
-            
-            outputLineNumbers.textContent = lineNums;
+
+            renderLineNumbers(outputLineNumbers, lines.length);
             codeOutput.innerHTML = html;
         }
 

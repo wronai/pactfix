@@ -592,7 +592,7 @@ def analyze_github_actions(code: str) -> AnalysisResult:
         if 'pull_request_target' in stripped:
             warnings.append(Issue(i, 1, 'GHA002', 'pull_request_target może być niebezpieczne'))
         
-        if re.search(r'(password|token|key|secret)\s*[:=]\s*["\'][^$\{]', stripped, re.I):
+        if re.search(r'(password|token|key|secret)\s*[:=]\s*(?!\$\{\{)(?!\$\{)(?!\$)\S+', stripped, re.I):
             errors.append(Issue(i, 1, 'GHA003', 'Hardcoded secret - użyj ${{ secrets.NAME }}'))
         
         if '${{' in stripped and ('github.event.' in stripped or 'inputs.' in stripped):
