@@ -17,6 +17,11 @@ NC='\033[0m'
 PASSED=0
 FAILED=0
 RESULTS=()
+RUN_TESTS=0
+
+if [[ "${1:-}" == "--test" ]]; then
+    RUN_TESTS=1
+fi
 
 cleanup_sandbox() {
     local project_path="$1"
@@ -42,55 +47,80 @@ test_project() {
     cleanup_sandbox "$project_path"
     
     # Run pactfix with sandbox
-    echo -e "${YELLOW}Running: pactfix --path ${project_path} --sandbox${NC}"
+    # Note: pactfix returns 1 if errors are detected, which is expected
+    if [[ $RUN_TESTS -eq 1 ]]; then
+        echo -e "${YELLOW}Running: pactfix --path ${project_path} --sandbox --test${NC}"
+        python -m pactfix --path "$project_path" --sandbox --test 2>&1 || true
+    else
+        echo -e "${YELLOW}Running: pactfix --path ${project_path} --sandbox${NC}"
+        python -m pactfix --path "$project_path" --sandbox 2>&1 || true
+    fi
     
-    if python -m pactfix --path "$project_path" --sandbox 2>&1; then
-        # Check if sandbox was created
-        if [[ -d "${project_path}/.pactfix" ]]; then
-            echo -e "${GREEN}✅ Sandbox created${NC}"
-            
-            # Check for required files
-            local required_files=("Dockerfile" "docker-compose.yml" "report.json")
-            local all_present=true
-            
-            for file in "${required_files[@]}"; do
-                if [[ -f "${project_path}/.pactfix/${file}" ]]; then
-                    echo -e "   ${GREEN}✓${NC} ${file}"
-                else
-                    echo -e "   ${RED}✗${NC} ${file} missing"
-                    all_present=false
-                fi
-            done
-            
-            # Check if fixed files exist
-            if [[ -d "${project_path}/.pactfix/fixed" ]]; then
-                fixed_count=$(find "${project_path}/.pactfix/fixed" -type f | wc -l)
-                echo -e "   ${GREEN}✓${NC} Fixed files: ${fixed_count}"
-            fi
-            
-            # Check report for fixes
-            if [[ -f "${project_path}/.pactfix/report.json" ]]; then
-                fixes=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_fixes', 0))" 2>/dev/null || echo "0")
-                errors=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_errors', 0))" 2>/dev/null || echo "0")
-                echo -e "   📊 Errors detected: ${errors}, Fixes applied: ${fixes}"
-            fi
-            
-            if $all_present; then
-                PASSED=$((PASSED + 1))
-                RESULTS+=("✅ ${project_name}: Sandbox OK (${fixes} fixes)")
+    # Check if sandbox was created
+    if [[ -d "${project_path}/.pactfix" ]]; then
+        echo -e "${GREEN}✅ Sandbox created${NC}"
+        
+        # Check for required files
+        local required_files=("Dockerfile" "docker-compose.yml" "report.json")
+        local all_present=true
+        
+        for file in "${required_files[@]}"; do
+            if [[ -f "${project_path}/.pactfix/${file}" ]]; then
+                echo -e "   ${GREEN}✓${NC} ${file}"
             else
-                FAILED=$((FAILED + 1))
-                RESULTS+=("⚠️  ${project_name}: Sandbox incomplete")
+                echo -e "   ${RED}✗${NC} ${file} missing"
+                all_present=false
+            fi
+        done
+        
+        # Check if fixed files exist
+        if [[ -d "${project_path}/.pactfix/fixed" ]]; then
+            fixed_count=$(find "${project_path}/.pactfix/fixed" -type f | wc -l)
+            echo -e "   ${GREEN}✓${NC} Fixed files: ${fixed_count}"
+        fi
+        
+        # Check report for fixes
+        if [[ -f "${project_path}/.pactfix/report.json" ]]; then
+            fixes=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_fixes', 0))" 2>/dev/null || echo "0")
+            errors=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_errors', 0))" 2>/dev/null || echo "0")
+            echo -e "   📊 Errors detected: ${errors}, Fixes applied: ${fixes}"
+        fi
+
+        # Validate sandbox execution status
+        local status_file="${project_path}/.pactfix/sandbox_status.json"
+        if [[ -f "$status_file" ]]; then
+            build_ok=$(python -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('build_success'))))" 2>/dev/null || echo "0")
+            run_ok=$(python -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('run_success'))))" 2>/dev/null || echo "0")
+            test_ok=$(python -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('test_success'))))" 2>/dev/null || echo "0")
+
+            if [[ "$build_ok" != "1" ]]; then
+                echo -e "   ${RED}✗${NC} Docker build failed"
+                all_present=false
+            fi
+            if [[ "$run_ok" != "1" ]]; then
+                echo -e "   ${RED}✗${NC} Sandbox run failed"
+                all_present=false
+            fi
+            if [[ $RUN_TESTS -eq 1 && "$test_ok" != "1" ]]; then
+                echo -e "   ${RED}✗${NC} Sandbox tests failed"
+                all_present=false
             fi
         else
-            echo -e "${RED}❌ Sandbox directory not created${NC}"
+            echo -e "   ${RED}✗${NC} sandbox_status.json missing"
+            all_present=false
+        fi
+        
+        if $all_present; then
+            PASSED=$((PASSED + 1))
+            RESULTS+=("✅ ${project_name}: Sandbox OK (${fixes} fixes)")
+        else
             FAILED=$((FAILED + 1))
-            RESULTS+=("❌ ${project_name}: No .pactfix directory")
+            RESULTS+=("⚠️  ${project_name}: Sandbox incomplete")
         fi
     else
-        echo -e "${RED}❌ Pactfix command failed${NC}"
+        echo -e "${RED}❌ Sandbox directory not created${NC}"
         FAILED=$((FAILED + 1))
-        RESULTS+=("❌ ${project_name}: Command failed")
+        RESULTS+=("❌ ${project_name}: No .pactfix directory")
     fi
 }
 

@@ -24,6 +24,9 @@ test-backend:
 test-pactfix:
 	cd $(PACTFIX_DIR) && python -m pytest -q
 
+test-sandbox:
+	cd $(PACTFIX_DIR) && ./scripts/test-sandboxes.sh
+
 build-pactfix:
 	cd $(PACTFIX_DIR) && python -m pip install -q --upgrade build twine
 	cd $(PACTFIX_DIR) && python -m build --sdist --wheel

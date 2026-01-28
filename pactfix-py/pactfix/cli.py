@@ -580,10 +580,24 @@ def process_project(project_path: str, comment: bool = False, sandbox: bool = Fa
         # Build and run
         print(f"\n🔨 Building Docker image for {language}...")
         success, build_output = sandbox_env.build()
+
+        sandbox_status = {
+            'language': language,
+            'build_success': bool(success),
+            'build_returncode': sandbox_env.last_build_returncode,
+            'run_success': None,
+            'run_returncode': None,
+            'test_requested': bool(run_tests),
+            'test_success': None,
+            'test_returncode': None,
+        }
         
         if success:
             print(f"\n🚀 Running sandbox...")
             run_success, run_output = sandbox_env.run()
+
+            sandbox_status['run_success'] = bool(run_success)
+            sandbox_status['run_returncode'] = sandbox_env.last_run_returncode
             
             # Save output
             output_path = pactfix_dir / 'sandbox_output.txt'
@@ -594,11 +608,18 @@ def process_project(project_path: str, comment: bool = False, sandbox: bool = Fa
             if run_tests:
                 print(f"\n🧪 Running tests...")
                 test_success, test_output = sandbox_env.test()
+
+                sandbox_status['test_success'] = bool(test_success)
+                sandbox_status['test_returncode'] = sandbox_env.last_test_returncode
                 
                 test_report_path = pactfix_dir / 'test_results.txt'
                 with open(test_report_path, 'w') as f:
                     f.write(test_output)
                 print(f"   📋 Test results saved to: {test_report_path}")
+
+        status_path = pactfix_dir / 'sandbox_status.json'
+        with open(status_path, 'w', encoding='utf-8') as f:
+            json.dump(sandbox_status, f, indent=2, ensure_ascii=False)
         
         print(f"\n✅ Sandbox ready in: {sandbox_env.sandbox_dir}")
         print(f"\nTo run manually:")

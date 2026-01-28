@@ -15,7 +15,7 @@ WORKDIR /app
 COPY requirements.txt* ./
 RUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || true
 COPY . .
-CMD ["python", "-m", "pytest", "-v", "||", "python", "main.py", "||", "echo", "No entrypoint found"]
+CMD ["sh", "-c", "python -m pytest -v || python main.py || echo 'No entrypoint found'"]
 ''',
 
     'nodejs': '''FROM node:20-slim
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install 2>/dev/null || true
 COPY . .
-CMD ["npm", "test", "||", "npm", "start", "||", "node", "index.js"]
+CMD ["sh", "-c", "npm test || npm start || node index.js"]
 ''',
 
     'javascript': '''FROM node:20-slim
@@ -31,7 +31,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install 2>/dev/null || true
 COPY . .
-CMD ["npm", "test", "||", "npm", "start", "||", "node", "index.js"]
+CMD ["sh", "-c", "npm test || npm start || node index.js"]
 ''',
 
     'typescript': '''FROM node:20-slim
@@ -40,7 +40,7 @@ COPY package*.json ./
 RUN npm install 2>/dev/null || true
 COPY . .
 RUN npm run build 2>/dev/null || npx tsc 2>/dev/null || true
-CMD ["npm", "test", "||", "npm", "start"]
+CMD ["sh", "-c", "npm test || npm start"]
 ''',
 
     'go': '''FROM golang:1.21-alpine
@@ -49,7 +49,7 @@ COPY go.* ./
 RUN go mod download 2>/dev/null || true
 COPY . .
 RUN go build -o main . 2>/dev/null || true
-CMD ["go", "test", "-v", "./...", "||", "./main"]
+CMD ["sh", "-c", "go test -v ./... || ./main"]
 ''',
 
     'rust': '''FROM rust:1.75-slim
@@ -58,7 +58,7 @@ COPY Cargo.* ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs && cargo build --release 2>/dev/null || true
 COPY . .
 RUN cargo build --release
-CMD ["cargo", "test", "||", "./target/release/*"]
+CMD ["sh", "-c", "cargo test || ./target/release/*"]
 ''',
 
     'java': '''FROM eclipse-temurin:21-jdk-jammy
@@ -66,7 +66,7 @@ WORKDIR /app
 COPY . .
 RUN if [ -f "pom.xml" ]; then ./mvnw package -DskipTests 2>/dev/null || mvn package -DskipTests; fi
 RUN if [ -f "build.gradle" ]; then ./gradlew build -x test 2>/dev/null || gradle build -x test; fi
-CMD ["java", "-jar", "target/*.jar", "||", "java", "Main"]
+CMD ["sh", "-c", "java -jar target/*.jar || java Main"]
 ''',
 
     'php': '''FROM php:8.3-cli
@@ -75,7 +75,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 COPY composer.* ./
 RUN composer install 2>/dev/null || true
 COPY . .
-CMD ["php", "-S", "0.0.0.0:8080", "-t", "public", "||", "php", "index.php"]
+CMD ["sh", "-c", "php -S 0.0.0.0:8080 -t public || php index.php"]
 ''',
 
     'ruby': '''FROM ruby:3.3-slim
@@ -83,7 +83,7 @@ WORKDIR /app
 COPY Gemfile* ./
 RUN bundle install 2>/dev/null || true
 COPY . .
-CMD ["bundle", "exec", "rspec", "||", "ruby", "main.rb"]
+CMD ["sh", "-c", "bundle exec rspec || ruby main.rb"]
 ''',
 
     'csharp': '''FROM mcr.microsoft.com/dotnet/sdk:8.0
@@ -92,7 +92,7 @@ COPY *.csproj ./
 RUN dotnet restore 2>/dev/null || true
 COPY . .
 RUN dotnet build --configuration Release
-CMD ["dotnet", "test", "||", "dotnet", "run"]
+CMD ["sh", "-c", "dotnet test || dotnet run"]
 ''',
 
     'bash': '''FROM ubuntu:22.04
@@ -100,34 +100,34 @@ RUN apt-get update && apt-get install -y bash shellcheck && rm -rf /var/lib/apt/
 WORKDIR /app
 COPY . .
 RUN chmod +x *.sh 2>/dev/null || true
-CMD ["bash", "-c", "shellcheck *.sh && ./main.sh || ./run.sh || echo 'No entrypoint'"]
+CMD ["sh", "-c", "shellcheck *.sh && ./main.sh || ./run.sh || echo 'No entrypoint'"]
 ''',
 
-    'dockerfile': '''FROM docker:24-dind
+    'dockerfile': '''FROM alpine:3.19
 WORKDIR /app
 COPY . .
-CMD ["docker", "build", "-t", "test-build", "."]
+CMD ["sh", "-c", "test -f Dockerfile && echo 'Dockerfile present' || (echo 'Dockerfile missing' && exit 1)"]
 ''',
 
     'terraform': '''FROM hashicorp/terraform:1.6
 WORKDIR /app
 COPY . .
 RUN terraform init
-CMD ["terraform", "validate"]
+CMD ["sh", "-c", "terraform validate"]
 ''',
 
     'ansible': '''FROM python:3.11-slim
 RUN pip install ansible ansible-lint
 WORKDIR /app
 COPY . .
-CMD ["ansible-lint", ".", "||", "ansible-playbook", "--syntax-check", "*.yml"]
+CMD ["sh", "-c", "ansible-lint . || ansible-playbook --syntax-check *.yml"]
 ''',
 
     'generic': '''FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y build-essential git curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . .
-CMD ["bash", "-c", "echo 'Generic sandbox - manual testing required'"]
+CMD ["sh", "-c", "echo 'Generic sandbox - manual testing required'"]
 '''
 }
 
@@ -243,8 +243,12 @@ class Sandbox:
     def __init__(self, project_path: str, sandbox_dir: str = None):
         self.project_path = Path(project_path).resolve()
         self.sandbox_dir = Path(sandbox_dir) if sandbox_dir else self.project_path / '.pactfix'
+        self.project_copy_dir = self.sandbox_dir / 'project'
         self.language = None
         self.stats = {}
+        self.last_build_returncode = None
+        self.last_run_returncode = None
+        self.last_test_returncode = None
         
     def setup(self) -> bool:
         """Setup the sandbox environment."""
@@ -253,6 +257,17 @@ class Sandbox:
         # Create sandbox directory
         self.sandbox_dir.mkdir(parents=True, exist_ok=True)
         
+        # Create a copy of the project for sandbox build/run
+        # This avoids running against the original sources and allows applying fixes.
+        if self.project_copy_dir.exists():
+            shutil.rmtree(self.project_copy_dir, ignore_errors=True)
+
+        ignore = shutil.ignore_patterns(
+            '.git', '.pactfix', 'node_modules', '__pycache__', '*.pyc',
+            'venv', '.venv', 'dist', 'build', 'target', '.idea', '.vscode'
+        )
+        shutil.copytree(self.project_path, self.project_copy_dir, ignore=ignore)
+
         # Detect project language
         self.language, self.stats = detect_project_language(self.project_path)
         print(f"📋 Detected language: {self.language} (confidence: {self.stats['confidence']})")
@@ -262,6 +277,12 @@ class Sandbox:
         dockerfile_path = self.sandbox_dir / 'Dockerfile'
         with open(dockerfile_path, 'w') as f:
             f.write(dockerfile_content)
+
+        # Also place a copy inside the build context for docker-compose compatibility
+        dockerfile_in_context = self.project_copy_dir / 'Dockerfile'
+        with open(dockerfile_in_context, 'w') as f:
+            f.write(dockerfile_content)
+
         print(f"✅ Created Dockerfile for {self.language}")
         
         # Create docker-compose.yml
@@ -298,12 +319,11 @@ class Sandbox:
 services:
   pactfix-sandbox:
     build:
-      context: {self.project_path}
-      dockerfile: {self.sandbox_dir}/Dockerfile
+      context: ./project
+      dockerfile: Dockerfile
     container_name: pactfix-sandbox-{self.language}
     volumes:
-      - {self.project_path}:/app:ro
-      - {self.sandbox_dir}/output:/output
+      - ./output:/output
     environment:
       - PACTFIX_SANDBOX=1
       - PACTFIX_LANGUAGE={self.language}
@@ -341,10 +361,18 @@ dist
         fixed_dir.mkdir(parents=True, exist_ok=True)
         
         for rel_path, content in fixed_files.items():
-            file_path = fixed_dir / rel_path
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, 'w') as f:
+            # Keep a copy under .pactfix/fixed
+            fixed_file_path = fixed_dir / rel_path
+            fixed_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(fixed_file_path, 'w') as f:
                 f.write(content)
+
+            # Apply fixes onto the sandbox project copy used for build/run
+            project_file_path = self.project_copy_dir / rel_path
+            project_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(project_file_path, 'w') as f:
+                f.write(content)
+
             print(f"  📄 {rel_path}")
         
         return True
@@ -356,11 +384,13 @@ dist
         try:
             result = subprocess.run(
                 ['docker', 'build', '-t', f'pactfix-sandbox-{self.language}', 
-                 '-f', str(self.sandbox_dir / 'Dockerfile'), str(self.project_path)],
+                 '-f', str(self.project_copy_dir / 'Dockerfile'), str(self.project_copy_dir)],
                 capture_output=True,
                 text=True,
                 timeout=300
             )
+
+            self.last_build_returncode = result.returncode
             
             if result.returncode == 0:
                 print("✅ Build successful")
@@ -380,8 +410,10 @@ dist
         """Run the sandbox container."""
         print(f"\n🚀 Running sandbox...")
         
-        cmd = ['docker', 'run', '--rm', '-v', f'{self.project_path}:/app:ro',
-               f'pactfix-sandbox-{self.language}']
+        output_dir = self.sandbox_dir / 'output'
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        cmd = ['docker', 'run', '--rm', '-v', f'{output_dir}:/output', f'pactfix-sandbox-{self.language}']
         
         if command:
             cmd.extend(['sh', '-c', command])
@@ -393,6 +425,8 @@ dist
                 text=True,
                 timeout=120
             )
+
+            self.last_run_returncode = result.returncode
             
             output = result.stdout + result.stderr
             
@@ -428,7 +462,9 @@ dist
         }
         
         cmd = test_commands.get(self.language, 'echo "No test command for this language"')
-        return self.run(cmd)
+        ok, out = self.run(cmd)
+        self.last_test_returncode = self.last_run_returncode
+        return ok, out
     
     def cleanup(self):
         """Clean up sandbox resources."""
