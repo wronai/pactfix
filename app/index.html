@@ -459,6 +459,21 @@
             border-radius: 4px;
         }
 
+        .apply-fix-btn {
+            margin-left: 10px;
+            padding: 2px 8px;
+            font-size: 11px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .apply-fix-btn:hover {
+            border-color: var(--accent-green);
+        }
+
         /* History panel */
         .history-panel {
             margin-top: 30px;
@@ -779,6 +794,9 @@
                         <button class="btn btn-secondary" onclick="copyOutput()">
                             📋 Kopiuj
                         </button>
+                        <button class="btn btn-secondary" onclick="applyAllFixesToInput()">
+                            🪄 Zastosuj poprawki
+                        </button>
                         <button class="btn btn-success" onclick="downloadOutput()">
                             ⬇️ Pobierz
                         </button>
@@ -1026,9 +1044,11 @@
                 html += `<span class="code-line ${lineClass}">${highlighted}</span>\n`;
                 
                 // Add annotation if there's a fix
-                fixes.forEach(fix => {
+                fixes.forEach((fix, fixIndex) => {
                     if (fix && fix.message) {
-                        html += `<span class="fix-annotation">✅ ${escapeHtml(fix.message)}</span>\n`;
+                        const hint = fix.after ? `Poprawna linia: ${fix.after}` : '';
+                        const titleAttr = hint ? ` title="${escapeAttribute(hint)}"` : '';
+                        html += `<span class="fix-annotation"${titleAttr}>✅ ${escapeHtml(fix.message)} <button class="apply-fix-btn" onclick="applyFixForLine(${lineNum}, ${fixIndex})">Zastosuj</button></span>\n`;
                     }
                 });
                 
@@ -1042,7 +1062,10 @@
                 // Add warning annotation
                 warnings.forEach(warning => {
                     if (warning && warning.message) {
-                        html += `<span class="warning-annotation">⚠️ ${escapeHtml(warning.message)}</span>\n`;
+                        const hintFix = fixes.find(f => f && f.after);
+                        const hint = hintFix ? `Poprawna linia: ${hintFix.after}` : '';
+                        const titleAttr = hint ? ` title="${escapeAttribute(hint)}"` : '';
+                        html += `<span class="warning-annotation"${titleAttr}>⚠️ ${escapeHtml(warning.message)}</span>\n`;
                     }
                 });
             });
@@ -1298,12 +1321,12 @@
 OUTPUT=/home/student/output-
 
 for HOST in server{a,b}; do
-    if test -f \${OUTPUT}\${HOST}; then
-        rm -v \${OUTPUT}\${HOST}
+    if test -f $OUTPUT/$HOST; then
+        rm -v $OUTPUT/$HOST
     fi
-    echo "$(ssh student@\${HOST} hostname -f") >> \${OUTPUT}\${HOST}
+    echo "$(ssh student@$HOST hostname -f") >> $OUTPUT/$HOST
     echo "#####"
-    ssh student@\${HOST} lscpu | grep "^CPU" >> \${OUTPUT}\${HOST}
+    ssh student@$HOST lscpu | grep "^CPU" >> $OUTPUT/$HOST
 done
 
 echo "Zakończono"`;
@@ -1344,7 +1367,7 @@ if __name__ == "__main__":
         }
 
         function downloadOutput() {
-            const text = (lastAnalysis && lastAnalysis.fixedCode) ? lastAnalysis.fixedCode : codeOutput.textContent;
+            const text = codeOutput.textContent;
             if (!text || text.includes('Wklej kod')) {
                 showToast('Brak kodu do pobrania', 'error');
                 return;
@@ -1388,6 +1411,43 @@ if __name__ == "__main__":
             URL.revokeObjectURL(url);
             
             showToast('Pobieranie rozpoczęte!', 'success');
+        }
+
+        function _replaceLinePreservingIndent(lines, lineNum, newLine) {
+            const idx = lineNum - 1;
+            if (idx < 0 || idx >= lines.length) return;
+            const indentMatch = lines[idx].match(/^\s*/);
+            const indent = indentMatch ? indentMatch[0] : '';
+            const withoutIndent = String(newLine || '').replace(/^\s*/, '');
+            lines[idx] = indent + withoutIndent;
+        }
+
+        function applyFixForLine(lineNum, fixIndex = 0) {
+            if (!lastAnalysis || !Array.isArray(lastAnalysis.fixes)) return;
+            const lineFixes = lastAnalysis.fixes.filter(f => f && f.line === lineNum);
+            const fix = lineFixes[fixIndex];
+            if (!fix || !fix.after) return;
+
+            const lines = codeInput.value.split('\n');
+            _replaceLinePreservingIndent(lines, lineNum, fix.after);
+            codeInput.value = lines.join('\n');
+            handleInput();
+            showToast(`Zastosowano poprawkę w linii ${lineNum}`, 'success');
+        }
+
+        function applyAllFixesToInput() {
+            if (!lastAnalysis || !Array.isArray(lastAnalysis.fixes) || lastAnalysis.fixes.length === 0) {
+                showToast('Brak poprawek do zastosowania', 'error');
+                return;
+            }
+            const lines = codeInput.value.split('\n');
+            lastAnalysis.fixes.forEach(fix => {
+                if (!fix || !fix.line || !fix.after) return;
+                _replaceLinePreservingIndent(lines, fix.line, fix.after);
+            });
+            codeInput.value = lines.join('\n');
+            handleInput();
+            showToast('Zastosowano wszystkie poprawki', 'success');
         }
 
         function clearHistory() {

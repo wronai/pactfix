@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-from .analyzer import analyze_code, detect_language, SUPPORTED_LANGUAGES
+from .analyzer import analyze_code, detect_language, SUPPORTED_LANGUAGES, add_fix_comments
 
 
 def main():
@@ -19,6 +19,7 @@ def main():
     parser.add_argument('input', nargs='?', help='Input file to analyze')
     parser.add_argument('-o', '--output', help='Output file for fixed code')
     parser.add_argument('-l', '--language', choices=SUPPORTED_LANGUAGES, help='Force language detection')
+    parser.add_argument('--comment', action='store_true', help='Insert comment above each applied fix line')
     parser.add_argument('--log-file', help='Output JSON log file')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
     parser.add_argument('--batch', help='Process all files in directory')
@@ -29,25 +30,26 @@ def main():
     args = parser.parse_args()
     
     if args.fix_all:
-        return fix_all_examples(args.verbose)
+        return fix_all_examples(args.verbose, args.comment)
     
     if args.batch:
         return process_batch(args.batch, args.verbose)
     
     if args.input == '-':
-        return process_stdin(args.output, args.language, args.log_file, args.verbose, args.json)
+        return process_stdin(args.output, args.language, args.comment, args.log_file, args.verbose, args.json)
 
     if not args.input:
         if not sys.stdin.isatty():
-            return process_stdin(args.output, args.language, args.log_file, args.verbose, args.json)
+            return process_stdin(args.output, args.language, args.comment, args.log_file, args.verbose, args.json)
         parser.print_help()
         return 1
     
-    return process_file(args.input, args.output, args.language, args.log_file, args.verbose, args.json)
+    return process_file(args.input, args.output, args.language, args.comment, args.log_file, args.verbose, args.json)
 
 
-def process_file(input_path: str, output_path: str = None, language: str = None, 
-                 log_file: str = None, verbose: bool = False, as_json: bool = False) -> int:
+def process_file(input_path: str, output_path: str = None, language: str = None,
+                 comment: bool = False, log_file: str = None, verbose: bool = False,
+                 as_json: bool = False) -> int:
     """Process a single file."""
     try:
         with open(input_path, 'r', encoding='utf-8') as f:
@@ -60,6 +62,8 @@ def process_file(input_path: str, output_path: str = None, language: str = None,
         return 1
     
     result = analyze_code(code, input_path, language)
+    if comment:
+        result.fixed_code = add_fix_comments(result)
     
     if as_json:
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
@@ -118,7 +122,7 @@ def process_file(input_path: str, output_path: str = None, language: str = None,
     return 0 if len(result.errors) == 0 else 1
 
 
-def process_stdin(output_path: str = None, language: str = None,
+def process_stdin(output_path: str = None, language: str = None, comment: bool = False,
                   log_file: str = None, verbose: bool = False, as_json: bool = False) -> int:
     """Process code from stdin."""
     try:
@@ -129,6 +133,8 @@ def process_stdin(output_path: str = None, language: str = None,
 
     filename_hint = output_path or '<stdin>'
     result = analyze_code(code, filename_hint, language)
+    if comment:
+        result.fixed_code = add_fix_comments(result)
 
     if as_json:
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
@@ -241,7 +247,7 @@ def process_batch(directory: str, verbose: bool = False) -> int:
     return 0 if total_errors == 0 else 1
 
 
-def fix_all_examples(verbose: bool = False) -> int:
+def fix_all_examples(verbose: bool = False, comment: bool = False) -> int:
     """Fix all files in examples/ directory and save to fixed/ subdirectories."""
     env_examples = os.environ.get('PACTFIX_EXAMPLES_DIR')
     examples_dir = Path(env_examples) if env_examples else Path('examples')
@@ -272,112 +278,8 @@ def fix_all_examples(verbose: bool = False) -> int:
                         code = f.read()
                     
                     result = analyze_code(code, str(file_path))
-                    
-                    # Save fixed file
-                    fixed_dir = subdir / 'fixed'
-                    fixed_dir.mkdir(exist_ok=True)
-                    
-                    fixed_path = fixed_dir / f"fixed_{file_path.name}"
-                    with open(fixed_path, 'w', encoding='utf-8') as f:
-                        f.write(result.fixed_code)
-                    
-                    # Save log
-                    log_path = fixed_dir / f"{file_path.stem}_log.json"
-                    log_data = {
-                        'source': str(file_path),
-                        'fixed': str(fixed_path),
-                        'language': result.language,
-                        'errors': len(result.errors),
-                        'warnings': len(result.warnings),
-                        'fixes': len(result.fixes),
-                        'details': result.to_dict()
-                    }
-                    with open(log_path, 'w', encoding='utf-8') as f:
-                        json.dump(log_data, f, indent=2, ensure_ascii=False)
-                    
-                    status = "✅" if len(result.errors) == 0 else "❌"
-                    print(f"{status} {subdir.name}/{file_path.name}: {len(result.errors)}E {len(result.warnings)}W {len(result.fixes)}F [{result.language}]")
-                    
-                    if verbose:
-                        for err in result.errors:
-                            print(f"   ❌ L{err.line}: [{err.code}] {err.message}")
-                        for fix in result.fixes:
-                            print(f"   🔧 L{fix.line}: {fix.description}")
-                    
-                    results.append({
-                        'file': str(file_path),
-                        'language': result.language,
-                        'errors': len(result.errors),
-                        'warnings': len(result.warnings),
-                        'fixes': len(result.fixes)
-                    })
-                
-                except Exception as e:
-                    print(f"❌ {file_path}: {e}")
-    
-    # Summary
-    total_errors = sum(r['errors'] for r in results)
-    total_warnings = sum(r['warnings'] for r in results)
-    total_fixes = sum(r['fixes'] for r in results)
-    
-    print(f"\n{'='*60}")
-    print(f"📊 Podsumowanie: {len(results)} plików")
-    print(f"   ❌ Errors:   {total_errors}")
-    print(f"   ⚠️  Warnings: {total_warnings}")
-    print(f"   🔧 Fixes:    {total_fixes}")
-    
-    # Save summary
-    summary_path = examples_dir / 'fix_summary.json'
-    with open(summary_path, 'w', encoding='utf-8') as f:
-        json.dump({
-            'timestamp': datetime.now().isoformat(),
-            'total_files': len(results),
-            'total_errors': total_errors,
-            'total_warnings': total_warnings,
-            'total_fixes': total_fixes,
-            'files': results
-        }, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n✅ Raport zapisany: {summary_path}")
-    
-    return 0
-
-
-if __name__ == '__main__':
-    sys.exit(main())
-
-
-def fix_all_examples(verbose: bool = False) -> int:
-    """Fix all files in examples/ directory and save to fixed/ subdirectories."""
-    env_examples = os.environ.get('PACTFIX_EXAMPLES_DIR')
-    examples_dir = Path(env_examples) if env_examples else Path('examples')
- 
-    if not examples_dir.exists():
-        for parent in Path(__file__).resolve().parents:
-            candidate = parent / 'examples'
-            if candidate.exists() and candidate.is_dir():
-                examples_dir = candidate
-                break
-     
-    if not examples_dir.exists():
-        print(f"❌ Nie znaleziono katalogu examples/", file=sys.stderr)
-        return 1
-    
-    print(f"🔧 Pactfix - naprawianie wszystkich plików w {examples_dir}\n")
-    
-    results = []
-    
-    for subdir in sorted(examples_dir.iterdir()):
-        if not subdir.is_dir():
-            continue
-        
-        for file_path in subdir.iterdir():
-            if file_path.is_file() and not file_path.name.startswith('fixed_'):
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        code = f.read()
-                    
-                    result = analyze_code(code, str(file_path))
+                    if comment:
+                        result.fixed_code = add_fix_comments(result)
                     
                     # Save fixed file
                     fixed_dir = subdir / 'fixed'

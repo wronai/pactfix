@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = process.env.PLAYWRIGHT_PORT || process.env.PORT || '8099';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +10,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: `http://localhost:${port}`,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -20,12 +22,12 @@ export default defineConfig({
   ],
   webServer: {
     command: 'python3 server.py',
-    url: 'http://localhost:8080',
+    url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
     env: {
       APP_DIR: './app',
-      PORT: '8080',
+      PORT: port,
     },
   },
 });

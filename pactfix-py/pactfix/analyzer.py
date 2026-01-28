@@ -8,7 +8,9 @@ from pathlib import Path
 SUPPORTED_LANGUAGES = [
     'bash', 'python', 'php', 'javascript', 'nodejs',
     'dockerfile', 'docker-compose', 'sql', 'terraform',
-    'kubernetes', 'nginx', 'github-actions', 'ansible'
+    'kubernetes', 'nginx', 'github-actions', 'ansible',
+    'typescript', 'go', 'rust', 'java', 'csharp', 'ruby',
+    'makefile', 'yaml', 'apache', 'systemd', 'html', 'css'
 ]
 
 @dataclass
@@ -81,7 +83,29 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'javascript'
         if fn_lower.endswith('.sh'):
             return 'bash'
-    
+        if fn_lower.endswith('.ts') or fn_lower.endswith('.tsx'):
+            return 'typescript'
+        if fn_lower.endswith('.go'):
+            return 'go'
+        if fn_lower.endswith('.rs'):
+            return 'rust'
+        if fn_lower.endswith('.java'):
+            return 'java'
+        if fn_lower.endswith('.cs'):
+            return 'csharp'
+        if fn_lower.endswith('.rb'):
+            return 'ruby'
+        if fn_name == 'makefile' or fn_lower.endswith('.mk'):
+            return 'makefile'
+        if fn_lower.endswith('.html') or fn_lower.endswith('.htm'):
+            return 'html'
+        if fn_lower.endswith('.css'):
+            return 'css'
+        if fn_lower.endswith('.conf') and 'apache' in fn_lower:
+            return 'apache'
+        if fn_lower.endswith('.service') or fn_lower.endswith('.timer'):
+            return 'systemd'
+
     # Content-based detection
     if any(line.strip().upper().startswith(('FROM ', 'RUN ', 'COPY ', 'ENTRYPOINT ')) for line in lines[:20]):
         if 'FROM ' in code.upper():
@@ -109,6 +133,50 @@ def detect_language(code: str, filename: str = None) -> str:
     if 'server {' in code or 'location ' in code:
         return 'nginx'
     
+    # TypeScript detection
+    if 'interface ' in code and '{' in code and (':' in code or 'export ' in code):
+        return 'typescript'
+    
+    # Go detection
+    if 'package ' in code and ('func ' in code or 'import (' in code):
+        return 'go'
+    
+    # Rust detection
+    if 'fn ' in code and ('let ' in code or 'use ' in code) and '::' in code:
+        return 'rust'
+    
+    # Java detection
+    if ('public class ' in code or 'private class ' in code) and 'void ' in code:
+        return 'java'
+    
+    # C# detection
+    if 'namespace ' in code and ('class ' in code or 'interface ' in code):
+        return 'csharp'
+    
+    # Ruby detection
+    if 'def ' in code and 'end' in code and ('class ' in code or 'module ' in code):
+        return 'ruby'
+    
+    # Makefile detection
+    if re.search(r'^\w+:\s*$', code, re.MULTILINE) or '.PHONY:' in code:
+        return 'makefile'
+    
+    # HTML detection
+    if '<!DOCTYPE' in code.upper() or '<html' in code.lower():
+        return 'html'
+    
+    # CSS detection
+    if re.search(r'[.#]\w+\s*\{', code) and ':' in code and ';' in code:
+        return 'css'
+    
+    # Apache config detection
+    if '<VirtualHost' in code or 'ServerName' in code or 'DocumentRoot' in code:
+        return 'apache'
+    
+    # Systemd unit detection
+    if '[Unit]' in code or '[Service]' in code or '[Install]' in code:
+        return 'systemd'
+    
     if first_line.startswith('#!'):
         if 'python' in first_line.lower():
             return 'python'
@@ -134,6 +202,69 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'javascript'
     
     return 'bash'
+
+
+def add_fix_comments(result: AnalysisResult) -> str:
+    if not result.fixes:
+        return result.fixed_code
+
+    comment_prefix_by_language = {
+        'python': '#',
+        'bash': '#',
+        'php': '//',
+        'javascript': '//',
+        'nodejs': '//',
+        'dockerfile': '#',
+        'docker-compose': '#',
+        'sql': '--',
+        'terraform': '#',
+        'kubernetes': '#',
+        'nginx': '#',
+        'github-actions': '#',
+        'ansible': '#',
+        'typescript': '//',
+        'go': '//',
+        'rust': '//',
+        'java': '//',
+        'csharp': '//',
+        'ruby': '#',
+        'makefile': '#',
+        'yaml': '#',
+        'apache': '#',
+        'systemd': '#',
+        'html': '<!--',
+        'css': '/*',
+    }
+    prefix = comment_prefix_by_language.get(result.language, '#')
+
+    lines = result.fixed_code.split('\n')
+    fixes_by_line: Dict[int, List[Fix]] = {}
+    for fx in result.fixes:
+        fixes_by_line.setdefault(fx.line, []).append(fx)
+
+    for line_no in sorted(fixes_by_line.keys(), reverse=True):
+        idx = line_no - 1
+        if idx < 0 or idx >= len(lines):
+            continue
+
+        indent_match = re.match(r'^\s*', lines[idx])
+        indent = indent_match.group(0) if indent_match else ''
+
+        parts = []
+        for fx in fixes_by_line[line_no]:
+            before = (fx.before or '').strip().replace('\n', ' ')
+            if len(before) > 80:
+                before = before[:77] + '...'
+            parts.append(f"{fx.description} (was: {before})")
+
+        msg = '; '.join(parts)
+        if len(msg) > 220:
+            msg = msg[:217] + '...'
+
+        comment_line = f"{indent}{prefix} pactfix: {msg}"
+        lines.insert(idx, comment_line)
+
+    return '\n'.join(lines)
 
 
 def _brace_unbraced_bash_vars(line: str) -> str:
@@ -182,6 +313,28 @@ def _brace_unbraced_bash_vars(line: str) -> str:
     return ''.join(out)
 
 
+def _split_bash_comment(line: str) -> tuple[str, str]:
+    in_single = False
+    in_double = False
+    escaped = False
+    for i, ch in enumerate(line):
+        if escaped:
+            escaped = False
+            continue
+        if ch == '\\':
+            escaped = True
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if ch == '#' and not in_single and not in_double:
+            return line[:i], line[i:]
+    return line, ''
+
+
 def analyze_bash(code: str) -> AnalysisResult:
     """Analyze Bash script."""
     errors, warnings, fixes = [], [], []
@@ -193,13 +346,15 @@ def analyze_bash(code: str) -> AnalysisResult:
         stripped = current_line.strip()
         
         # Variables without braces: use ${VAR} for clarity (e.g. ${OUTPUT}/${HOST})
-        if not stripped.startswith('#') and re.search(r'\$[A-Za-z_][A-Za-z0-9_]*', stripped):
-            braced = _brace_unbraced_bash_vars(stripped)
-            if braced != stripped:
+        if not stripped.startswith('#') and '$' in current_line and re.search(r'\$[A-Za-z_][A-Za-z0-9_]*', current_line):
+            code_part, comment_part = _split_bash_comment(current_line)
+            braced_code_part = _brace_unbraced_bash_vars(code_part)
+            if braced_code_part != code_part:
+                new_line = braced_code_part + comment_part
                 warnings.append(Issue(i, 1, 'BASH001', 'Zmienne bez klamerek: użyj składni ${VAR} (np. ${OUTPUT}/${HOST})'))
-                fixes.append(Fix(i, 'Dodano klamerki do zmiennych', stripped, braced))
-                current_line = current_line.replace(stripped, braced)
-                stripped = braced
+                fixes.append(Fix(i, 'Dodano klamerki do zmiennych', current_line.strip(), new_line.strip()))
+                current_line = new_line
+                stripped = current_line.strip()
         
         # SC2164: cd without error handling
         if re.match(r'^cd\s+', stripped) and '||' not in stripped and '&&' not in stripped:
@@ -684,6 +839,25 @@ def analyze_ansible(code: str) -> AnalysisResult:
     return AnalysisResult('ansible', code, code, errors, warnings, fixes)
 
 
+# Import new analyzers
+try:
+    from .analyzers.typescript import analyze_typescript
+    from .analyzers.go import analyze_go
+    from .analyzers.rust import analyze_rust
+    from .analyzers.java import analyze_java
+    from .analyzers.csharp import analyze_csharp
+    from .analyzers.ruby import analyze_ruby
+    from .analyzers.makefile import analyze_makefile
+    from .analyzers.yaml_generic import analyze_yaml
+    from .analyzers.apache import analyze_apache
+    from .analyzers.systemd import analyze_systemd
+    from .analyzers.html import analyze_html
+    from .analyzers.css import analyze_css
+    NEW_ANALYZERS_AVAILABLE = True
+except ImportError:
+    NEW_ANALYZERS_AVAILABLE = False
+
+
 def analyze_code(code: str, filename: str = None, force_language: str = None) -> AnalysisResult:
     """Main entry point for code analysis."""
     language = force_language or detect_language(code, filename)
@@ -703,6 +877,23 @@ def analyze_code(code: str, filename: str = None, force_language: str = None) ->
         'github-actions': analyze_github_actions,
         'ansible': analyze_ansible,
     }
+    
+    # Add new analyzers if available
+    if NEW_ANALYZERS_AVAILABLE:
+        analyzers.update({
+            'typescript': analyze_typescript,
+            'go': analyze_go,
+            'rust': analyze_rust,
+            'java': analyze_java,
+            'csharp': analyze_csharp,
+            'ruby': analyze_ruby,
+            'makefile': analyze_makefile,
+            'yaml': analyze_yaml,
+            'apache': analyze_apache,
+            'systemd': analyze_systemd,
+            'html': analyze_html,
+            'css': analyze_css,
+        })
     
     analyzer = analyzers.get(language, analyze_bash)
     result = analyzer(code)

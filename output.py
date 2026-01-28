@@ -6,12 +6,14 @@ import json
 def process_data(items=[]):
     for item in items:
         if item == None:
-            print("Item is None")  # ✅ NAPRAWIONO: Dodano nawiasy do print()
+            # pactfix: Dodano nawiasy do print() (was: print "Item is None")
+            print("Item is None")
             continue
         try:
             result = item * 2
         except:
-            print("Error processing item")  # ✅ NAPRAWIONO: Dodano nawiasy do print()
+            # pactfix: Dodano nawiasy do print() (was: print "Error processing item")
+            print("Error processing item")
     return items
 
 def calculate_average(numbers):
@@ -23,4 +25,5 @@ if __name__ == "__main__":
     process_data(data)
     
     if len(sys.argv) == None:
-        print("No arguments")  # ✅ NAPRAWIONO: Dodano nawiasy do print()
+        # pactfix: Dodano nawiasy do print() (was: print "No arguments")
+        print("No arguments")

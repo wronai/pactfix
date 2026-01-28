@@ -24,4 +24,4 @@ python -m pactfix examples/python/faulty.py -o output.py --log-file log.json -v
 python -m pactfix examples/bash/faulty.sh -o output.sh --log-file log.json -v
 
 
-cat examples/python/faulty.py | pactfix -o output.py
+cat examples/python/faulty.py | pactfix -o output.py --comment

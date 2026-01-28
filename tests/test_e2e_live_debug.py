@@ -117,6 +117,33 @@ done
         errors = result.get("errors") or []
         self.assertTrue(any(e.get("code") == "SC1073" for e in errors))
 
+    def test_api_analyze_braces_unbraced_vars(self) -> None:
+        code = """#!/usr/bin/bash
+OUTPUT=/home/student/output-
+
+for HOST in server{a,b}; do
+    echo $OUTPUT/$HOST
+done
+"""
+
+        req = Request(
+            f"http://127.0.0.1:{self.port}/api/analyze",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"code": code}).encode("utf-8"),
+        )
+
+        with urlopen(req, timeout=5.0) as resp:
+            self.assertEqual(resp.status, 200)
+            result = json.loads(resp.read().decode("utf-8"))
+
+        fixed = result.get("fixedCode", "")
+        self.assertIn("echo ${OUTPUT}/${HOST}", fixed)
+
+        warnings = result.get("warnings") or []
+        self.assertTrue(any(w.get("code") == "BASH001" for w in warnings))
+        self.assertFalse(any(w.get("code") == "SC2086" and w.get("line") == 5 for w in warnings))
+
     def test_api_batch_analyze_scans_directory(self) -> None:
         fixture_dir = self.repo_root / "tests" / "_batch_fixture"
         fixture_dir.mkdir(parents=True, exist_ok=True)

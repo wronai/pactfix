@@ -6,6 +6,7 @@ These tests avoid modifying the real repo examples/ by using PACTFIX_EXAMPLES_DI
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -14,7 +15,7 @@ def _run_cli(args, cwd, env=None):
     if env:
         merged_env.update(env)
 
-    cmd = ["python", "-m", "pactfix"] + args
+    cmd = [sys.executable, "-m", "pactfix"] + args
     proc = subprocess.run(cmd, cwd=str(cwd), env=merged_env, capture_output=True, text=True)
     return proc
 
@@ -49,3 +50,17 @@ def test_cli_fix_all_uses_env_examples_dir(tmp_path):
     assert summary.exists()
     summary_data = json.loads(summary.read_text(encoding="utf-8"))
     assert summary_data["total_files"] >= 1
+
+
+def test_cli_comment_inserts_comment_into_output_file(tmp_path):
+    sample = tmp_path / "test.sh"
+    sample.write_text("cd /tmp\n", encoding="utf-8")
+
+    out = tmp_path / "out.sh"
+    proc = _run_cli([str(sample), "-o", str(out), "--comment"], cwd=Path(__file__).resolve().parents[1])
+    assert proc.returncode == 0
+
+    text = out.read_text(encoding="utf-8")
+    assert "# pactfix:" in text
+    assert "Dodano obsługę błędów" in text
+    assert "cd /tmp || exit 1" in text

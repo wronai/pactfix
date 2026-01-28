@@ -1,10 +1,12 @@
 """Tests for pactfix analyzer."""
 
+import re
 import pytest
 from pactfix.analyzer import (
     analyze_code, detect_language, 
     analyze_bash, analyze_python, analyze_dockerfile,
-    analyze_sql, analyze_terraform, analyze_kubernetes
+    analyze_sql, analyze_terraform, analyze_kubernetes,
+    add_fix_comments
 )
 
 
@@ -44,10 +46,91 @@ class TestBashAnalysis:
         result = analyze_bash("cd /tmp")
         assert any(w.code == 'SC2164' for w in result.warnings)
         assert any(f.description for f in result.fixes)
+
+    def test_add_fix_comments_inserts_comment_above_fixed_line(self):
+        result = analyze_bash("cd /tmp")
+        out = add_fix_comments(result)
+        lines = out.splitlines()
+        assert lines[0].startswith("# pactfix:")
+        assert "Dodano obsługę błędów" in lines[0]
+        assert lines[1] == "cd /tmp || exit 1"
     
     def test_misplaced_quotes(self):
         result = analyze_bash('VAR="hello"world')
         assert any(e.code == 'SC1073' for e in result.errors)
+
+    def test_brace_unbraced_vars_output_host(self):
+        result = analyze_bash("echo $OUTPUT/$HOST")
+        assert "echo ${OUTPUT}/${HOST}" in result.fixed_code
+        assert any(w.code == 'BASH001' for w in result.warnings)
+        assert any(f.description == 'Dodano klamerki do zmiennych' for f in result.fixes)
+
+
+_BASH_BRACE_VAR_NAMES = [
+    'OUTPUT', 'HOST', 'NAME', 'PATH', 'VAR', 'X', 'LONG_NAME', 'TMPDIR', 'USER', 'HOME'
+]
+
+_BASH_BRACE_TEMPLATES = [
+    'echo ${VAR}',
+    'echo "$${VAR}"',
+]
+
+_BASH_BRACE_SHOULD_CHANGE_TEMPLATES = [
+    'echo ${VAR}',
+]
+
+
+def _gen_bash_brace_cases() -> list[str]:
+    templates = [
+        'echo ${VAR}',
+        'echo "${VAR}"',
+        'printf "%s" ${VAR}',
+        'rm -v ${VAR}',
+        'test -f ${VAR}/${HOST}',
+        'cat ${VAR}/${HOST}',
+        'scp ${VAR} user@${HOST}:/tmp/',
+        'cmd --out=${VAR}',
+        'echo pre${VAR}/post',
+        'echo user@${HOST}:${VAR}',
+    ]
+    cases = []
+    for var in _BASH_BRACE_VAR_NAMES:
+        for tpl in templates:
+            line = tpl.replace('${VAR}', f'${var}').replace('${HOST}', '$HOST')
+            cases.append(line)
+    return cases
+
+
+@pytest.mark.parametrize('line', _gen_bash_brace_cases())
+def test_brace_unbraced_vars_many_cases(line: str):
+    result = analyze_bash(line)
+    assert any(w.code == 'BASH001' for w in result.warnings)
+    assert any(f.description == 'Dodano klamerki do zmiennych' for f in result.fixes)
+    assert re.search(r'\$(?!\{)[A-Za-z_][A-Za-z0-9_]*', result.fixed_code) is None
+
+
+@pytest.mark.parametrize(
+    'line',
+    [
+        "echo '$OUTPUT/$HOST'",
+        r"echo \$OUTPUT/\$HOST",
+        'echo ${OUTPUT}/${HOST}',
+        '# comment $OUTPUT/$HOST',
+        'echo ok # $OUTPUT/$HOST',
+        'echo $1',
+        'echo $?'
+    ],
+)
+def test_brace_unbraced_vars_does_not_change_these_cases(line: str):
+    result = analyze_bash(line)
+    assert result.fixed_code == line
+    assert not any(w.code == 'BASH001' for w in result.warnings)
+
+
+def test_brace_unbraced_vars_does_not_change_comment_part():
+    result = analyze_bash('echo $OUTPUT # $HOST')
+    assert result.fixed_code == 'echo ${OUTPUT} # $HOST'
+    assert any(w.code == 'BASH001' for w in result.warnings)
 
 
 class TestPythonAnalysis:

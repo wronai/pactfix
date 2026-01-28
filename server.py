@@ -411,6 +411,13 @@ def analyze_code(code: str) -> dict:
         result['fixedCode'] = braced_code
         result['warnings'].extend(brace_warnings)
         result['fixes'].extend(brace_fixes)
+
+        brace_lines = {fx.get('line') for fx in brace_fixes if isinstance(fx, dict)}
+        if brace_lines:
+            result['warnings'] = [
+                w for w in result['warnings']
+                if not (isinstance(w, dict) and w.get('code') == 'SC2086' and w.get('line') in brace_lines)
+            ]
     
     # Add comments to fixed code
     result['fixedCode'] = add_fix_comments(result['fixedCode'], result['fixes'])
