@@ -4,7 +4,7 @@ SHELL := /bin/bash
 -include .env
 export
 
-.PHONY: help test test-frontend test-backend test-pactfix test-sandbox test-sandbox-tests lint publish build-pactfix bump-patch clean build run stop clean
+.PHONY: help test test-frontend test-backend test-pactfix test-sandbox test-sandbox-tests lint publish build-pactfix bump-patch clean docker-build docker-run docker-stop docker-clean down
 
 PACTFIX_DIR ?= pactfix-py
 PORT ?= 8081
@@ -18,10 +18,11 @@ help:
 	@echo "  make test-sandbox-tests - run sandbox smoke test + run in-container test commands (--test)"
 	@echo "  make test-backend   - basic python syntax check for server.py"
 	@echo "  make publish        - build + upload python package pactfix (requires twine credentials)"
-	@echo "  make build    - build Docker image for pactown-debug"
-	@echo "  make run      - run Docker container (builds if needed)"
-	@echo "  make stop     - stop and remove running container"
-	@echo "  make clean    - remove Docker image and containers"
+	@echo "  make docker-build    - build Docker image for pactown-debug"
+	@echo "  make docker-run      - run Docker container (builds if needed)"
+	@echo "  make docker-stop     - stop and remove running container"
+	@echo "  make docker-clean    - remove Docker image and containers"
+	@echo "  make down            - stop and remove containers (alias for docker-clean)"
 
 test: test-backend test-pactfix test-frontend
 
@@ -30,7 +31,7 @@ test-frontend:
 
 test-backend:
 	python -m py_compile server.py
-	python -m unittest -q discover -s tests
+	python -m unittest discover -s tests -q
 
 test-pactfix:
 	cd $(PACTFIX_DIR) && python -m pytest -q
@@ -55,10 +56,10 @@ clean:
 	rm -rf dist build .pytest_cache test-results \
 		$(PACTFIX_DIR)/.pytest_cache $(PACTFIX_DIR)/dist $(PACTFIX_DIR)/build $(PACTFIX_DIR)/*.egg-info
 
-build:
+docker-build:
 	docker build -t pactown-debug .
 
-run: build
+docker-run: docker-build
 	@if ! docker ps -q -f name=pactown-debug | grep -q .; then \
 		docker run -d --name pactown-debug -p $(PORT):8080 --env-file .env --rm pactown-debug; \
 		echo "Container started: http://localhost:$(PORT)"; \
@@ -66,7 +67,7 @@ run: build
 		echo "Container already running: http://localhost:$(PORT)"; \
 	fi
 
-stop:
+docker-stop:
 	@if docker ps -q -f name=pactown-debug | grep -q .; then \
 		docker stop pactown-debug; \
 		echo "Container stopped."; \
@@ -74,10 +75,12 @@ stop:
 		echo "Container not running."; \
 	fi
 
-clean: stop
+docker-clean: docker-stop
 	@if docker images -q pactown-debug | grep -q .; then \
 		docker rmi pactown-debug; \
 		echo "Image removed."; \
 	else \
 		echo "Image not found."; \
 	fi
+
+down: docker-clean

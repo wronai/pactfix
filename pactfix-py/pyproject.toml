@@ -23,6 +23,7 @@ keywords = ["linter", "code-analysis", "bash", "python", "php", "javascript", "d
 dependencies = [
     "flask>=2.0.0",
     "flask-cors>=3.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]

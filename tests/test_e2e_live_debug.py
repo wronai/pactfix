@@ -38,6 +38,7 @@ class LiveDebugE2E(unittest.TestCase):
 
         env = os.environ.copy()
         env["PORT"] = str(cls.port)
+        env["APP_DIR"] = str(cls.repo_root / "app")
         env["PYTHONUNBUFFERED"] = "1"
 
         cls.proc = subprocess.Popen(

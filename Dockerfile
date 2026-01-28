@@ -22,7 +22,7 @@ COPY app /app/
 COPY server.py /app/server.py
 
 # Copy .env file if it exists
-COPY .env* /app/ 2>/dev/null || true
+COPY .env .env
 
 # Set default environment variables (can be overridden by .env)
 ENV PORT=8080
