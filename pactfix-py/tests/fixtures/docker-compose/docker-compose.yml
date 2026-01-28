@@ -1,0 +1,61 @@
+# Docker Compose Error Fixture - 10+ different error types
+version: '3.8'
+
+services:
+  web:
+    # COMPOSE001: Using :latest tag
+    image: nginx:latest
+    ports:
+      - "80:80"
+    # COMPOSE003: network_mode host
+    network_mode: host
+    environment:
+      # COMPOSE005: Hardcoded secrets
+      - DATABASE_PASSWORD=secret123
+      - API_KEY=sk-abcdef123456
+      - SECRET_TOKEN=bearer_xyz
+    volumes:
+      - ./html:/usr/share/nginx/html
+  
+  app:
+    # COMPOSE001: No tag specified
+    image: myapp
+    # COMPOSE002: Privileged container
+    privileged: true
+    environment:
+      - NODE_ENV=production
+      - PASSWORD=hardcoded_password
+    depends_on:
+      - db
+  
+  db:
+    image: postgres:latest
+    environment:
+      # More hardcoded secrets
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_USER: admin
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  
+  redis:
+    image: redis
+    # No resource limits
+  
+  worker:
+    image: worker:latest
+    # COMPOSE004: Mounting docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    privileged: true
+  
+  monitor:
+    image: monitor
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ADMIN_PASSWORD=monitor123
+
+volumes:
+  db_data:
+
+# COMPOSE006: Multiple services without networks definition

@@ -1,0 +1,73 @@
+# Ansible Error Fixture - 10+ different error types
+---
+- name: Configure Web Server
+  hosts: webservers
+  # ANS003: become without become_user
+  become: true
+  
+  vars:
+    # ANS001: Plain text passwords
+    db_password: "secret123"
+    api_key: "sk-abcdef123456"
+    admin_password: "admin123"
+  
+  tasks:
+    - name: Install packages
+      apt:
+        name:
+          - nginx
+          - python3
+        state: present
+    
+    # ANS002: shell/command without changed_when
+    - name: Run setup script
+      shell: /opt/scripts/setup.sh
+    
+    - name: Check status
+      command: systemctl status nginx
+    
+    - name: Custom command
+      shell: |
+        cd /opt/app
+        ./configure
+        make install
+    
+    # ANS004: ignore_errors hides failures
+    - name: Risky operation
+      shell: rm -rf /tmp/cache/*
+      ignore_errors: true
+    
+    - name: Another risky task
+      command: /opt/cleanup.sh
+      ignore_errors: yes
+    
+    # More password issues
+    - name: Configure database
+      mysql_user:
+        name: app
+        password: "plaintext_db_password"
+        priv: '*.*:ALL'
+    
+    - name: Set environment
+      lineinfile:
+        path: /etc/environment
+        line: 'DATABASE_PASSWORD="hardcoded_value"'
+    
+    # become without user specification
+    - name: Root operation
+      shell: whoami
+      become: yes
+    
+    # No idempotency
+    - name: Append to file
+      shell: echo "new line" >> /etc/config
+    
+    # Using shell when command would suffice
+    - name: Simple command
+      shell: ls -la /var/www
+    
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted

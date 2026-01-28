@@ -1,0 +1,68 @@
+# GitHub Actions Error Fixture - 10+ different error types
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  # GHA002: pull_request_target is dangerous
+  pull_request_target:
+    branches: [main]
+
+# GHA005: Missing permissions (should set minimal)
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # GHA001: Using @master instead of version/SHA
+    - uses: actions/setup-node@master
+    - uses: actions/setup-python@main
+    
+    # GHA003: Hardcoded secrets
+    - name: Configure
+      run: |
+        echo "API_KEY=sk-abcdef123456" >> $GITHUB_ENV
+        echo "PASSWORD=secret123" >> $GITHUB_ENV
+      env:
+        TOKEN: hardcoded_token_value
+        SECRET: my_secret_key
+    
+    # GHA004: Potential shell injection
+    - name: Process PR
+      run: echo "Processing ${{ github.event.pull_request.title }}"
+    
+    - name: Handle Input
+      run: |
+        echo "User input: ${{ inputs.user_data }}"
+        ./script.sh "${{ github.event.issue.body }}"
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Test
+      run: npm test
+    
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # More hardcoded credentials
+    - name: Deploy
+      run: |
+        curl -H "Authorization: Bearer hardcoded_token" https://api.example.com/deploy
+      env:
+        API_KEY: sk-production-key-12345
+        DATABASE_PASSWORD: prod_password_123
+    
+    # Using deprecated actions
+    - uses: actions/upload-artifact@v1
+    
+    # Insecure download
+    - name: Download tool
+      run: |
+        curl -sSL http://insecure-download.com/script.sh | bash
