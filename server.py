@@ -10,6 +10,7 @@ import subprocess
 import re
 import os
 import time
+import sys
 import urllib.request
 import urllib.error
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -32,6 +33,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent
+
+PACTFIX_LOCAL_AVAILABLE = False
+_pactfix_analyze_code = None
+try:
+    pactfix_root = REPO_ROOT / 'pactfix-py'
+    if pactfix_root.exists() and pactfix_root.is_dir():
+        sys.path.insert(0, str(pactfix_root))
+    from pactfix.analyzer import analyze_code as _pactfix_analyze_code  # type: ignore
+    PACTFIX_LOCAL_AVAILABLE = True
+except Exception:
+    PACTFIX_LOCAL_AVAILABLE = False
 
 SNIPPET_DIR = Path(os.environ.get('SNIPPET_DIR', '/tmp/pactown-live-debug-snippets')).resolve()
 SNIPPET_DIR.mkdir(parents=True, exist_ok=True)
@@ -2055,6 +2067,17 @@ class DebugHandler(SimpleHTTPRequestHandler):
                 result = None
                 if PACTFIX_API_URL:
                     result = self._call_pactfix_api(data)
+
+                # Try local pactfix-py analyzer if available
+                if result is None and PACTFIX_LOCAL_AVAILABLE and _pactfix_analyze_code is not None:
+                    try:
+                        pf_result = _pactfix_analyze_code(code, filename=filename, force_language=force_language)
+                        if hasattr(pf_result, 'to_dict'):
+                            result = pf_result.to_dict()
+                        else:
+                            result = pf_result
+                    except Exception as e:
+                        logger.warning(f"Local pactfix analyzer error, falling back to local legacy: {e}")
                 
                 # Fallback to local analysis
                 if result is None:

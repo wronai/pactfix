@@ -32,11 +32,22 @@ def analyze_ini(code: str) -> AnalysisResult:
 
     parser = configparser.ConfigParser()
 
-    # INI001: Missing section header
-    if not re.search(r'^\s*\[.+\]\s*$', fixed_code, re.MULTILINE):
-        errors.append(Issue(1, 1, 'INI001', 'Brak nagłówka sekcji [section] - dodano [DEFAULT]'))
-        fixed_code = '[DEFAULT]\n' + fixed_code
-        fixes.append(Fix(1, 'Dodano [DEFAULT] na początku pliku', '', '[DEFAULT]'))
+    # INI001: Missing section header at the beginning
+    if not fixed_code.lstrip().startswith('[DEFAULT]'):
+        first_meaningful = None
+        for idx, line in enumerate(fixed_code.split('\n')):
+            s = line.strip()
+            if not s:
+                continue
+            if s.startswith(';') or s.startswith('#'):
+                continue
+            first_meaningful = s
+            break
+
+        if first_meaningful is not None and not first_meaningful.startswith('['):
+            errors.append(Issue(1, 1, 'INI001', 'Brak nagłówka sekcji na początku pliku - dodano [DEFAULT]'))
+            fixed_code = '[DEFAULT]\n' + fixed_code
+            fixes.append(Fix(1, 'Dodano [DEFAULT] na początku pliku', '', '[DEFAULT]'))
 
     try:
         parser.read_string(fixed_code)

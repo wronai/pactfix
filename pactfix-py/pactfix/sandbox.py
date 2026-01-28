@@ -122,6 +122,24 @@ COPY . .
 CMD ["sh", "-c", "ansible-lint . || ansible-playbook --syntax-check *.yml"]
 ''',
 
+    'json': '''FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+CMD ["sh", "-c", "echo 'JSON sandbox ready'"]
+''',
+
+    'toml': '''FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+CMD ["sh", "-c", "echo 'TOML sandbox ready'"]
+''',
+
+    'ini': '''FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+CMD ["sh", "-c", "echo 'INI sandbox ready'"]
+''',
+
     'generic': '''FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y build-essential git curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -198,6 +216,21 @@ def detect_project_language(project_path: Path) -> Tuple[str, Dict]:
         'ansible': {
             'files': ['playbook.yml', 'ansible.cfg', 'inventory'],
             'extensions': [],
+            'weight': 0
+        },
+        'json': {
+            'files': [],
+            'extensions': ['.json', '.jsonc'],
+            'weight': 0
+        },
+        'toml': {
+            'files': ['pyproject.toml'],
+            'extensions': ['.toml'],
+            'weight': 0
+        },
+        'ini': {
+            'files': ['setup.cfg', 'tox.ini'],
+            'extensions': ['.ini', '.cfg'],
             'weight': 0
         }
     }
@@ -464,6 +497,9 @@ dist
             'bash': 'shellcheck *.sh',
             'terraform': 'terraform validate',
             'ansible': 'ansible-lint .',
+            'json': "python -c \"import glob,json; paths=glob.glob('**/*.json', recursive=True); [json.load(open(p, 'r', encoding='utf-8', errors='ignore')) for p in paths]; print('JSON OK', len(paths))\"",
+            'toml': "python -c \"import glob,tomllib; paths=glob.glob('**/*.toml', recursive=True); [tomllib.load(open(p, 'rb')) for p in paths]; print('TOML OK', len(paths))\"",
+            'ini': "python -c \"import glob,configparser; paths=glob.glob('**/*.ini', recursive=True)+glob.glob('**/*.cfg', recursive=True); c=configparser.ConfigParser(); [c.read(p, encoding='utf-8') for p in paths]; print('INI OK', len(paths))\"",
         }
         
         cmd = test_commands.get(self.language, 'echo "No test command for this language"')

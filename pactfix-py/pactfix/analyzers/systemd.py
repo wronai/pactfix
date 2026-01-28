@@ -50,6 +50,9 @@ def analyze_systemd(code: str) -> AnalysisResult:
             value = stripped.split('=')[1].strip()
             if value == 'no':
                 warnings.append(Issue(i, 1, 'SYSTEMD003', 'Restart=no - usługa nie będzie restartowana'))
+                fixed = 'Restart=on-failure'
+                fixes.append(Fix(i, 'Zmieniono Restart=no na Restart=on-failure', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
 
         # SYSTEMD004: User directive
         if stripped.startswith('User='):
@@ -68,6 +71,9 @@ def analyze_systemd(code: str) -> AnalysisResult:
             valid_types = ['simple', 'forking', 'oneshot', 'dbus', 'notify', 'idle']
             if service_type not in valid_types:
                 errors.append(Issue(i, 1, 'SYSTEMD006', f'Nieprawidłowy Type: {service_type}'))
+                fixed = 'Type=simple'
+                fixes.append(Fix(i, 'Zmieniono Type na simple', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
 
         # SYSTEMD007: ExecStart without absolute path
         if stripped.startswith('ExecStart='):
@@ -93,21 +99,38 @@ def analyze_systemd(code: str) -> AnalysisResult:
             if stripped.startswith('PrivateTmp='):
                 if 'false' in stripped.lower():
                     warnings.append(Issue(i, 1, 'SYSTEMD010', 'PrivateTmp=false - rozważ true dla bezpieczeństwa'))
+                    fixed = 'PrivateTmp=true'
+                    fixes.append(Fix(i, 'Zmieniono PrivateTmp na true', stripped, fixed))
+                    fixed_lines[i - 1] = indent_str + fixed
 
         # SYSTEMD011: ProtectSystem
         if stripped.startswith('ProtectSystem='):
             value = stripped.split('=')[1].strip()
             if value not in ['full', 'strict', 'true']:
                 warnings.append(Issue(i, 1, 'SYSTEMD011', 'ProtectSystem - rozważ strict lub full'))
+                fixed = 'ProtectSystem=strict'
+                fixes.append(Fix(i, 'Zmieniono ProtectSystem na strict', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
 
         # SYSTEMD012: NoNewPrivileges
         if stripped.startswith('NoNewPrivileges='):
             if 'false' in stripped.lower():
                 warnings.append(Issue(i, 1, 'SYSTEMD012', 'NoNewPrivileges=false - rozważ true'))
+                fixed = 'NoNewPrivileges=true'
+                fixes.append(Fix(i, 'Zmieniono NoNewPrivileges na true', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
 
         # SYSTEMD013: TimeoutStartSec/TimeoutStopSec
         if 'Timeout' in stripped and 'infinity' in stripped.lower():
             warnings.append(Issue(i, 1, 'SYSTEMD013', 'Timeout=infinity może blokować system'))
+            if stripped.startswith('TimeoutStartSec='):
+                fixed = 'TimeoutStartSec=60'
+                fixes.append(Fix(i, 'Zmieniono TimeoutStartSec na 60', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
+            elif stripped.startswith('TimeoutStopSec='):
+                fixed = 'TimeoutStopSec=60'
+                fixes.append(Fix(i, 'Zmieniono TimeoutStopSec na 60', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
 
         # SYSTEMD014: WantedBy in Install section
         if current_section == 'Install' and stripped.startswith('WantedBy='):
@@ -117,6 +140,9 @@ def analyze_systemd(code: str) -> AnalysisResult:
         if stripped.startswith('KillMode='):
             if 'none' in stripped.lower():
                 warnings.append(Issue(i, 1, 'SYSTEMD015', 'KillMode=none - procesy mogą nie być zabijane'))
+                fixed = 'KillMode=control-group'
+                fixes.append(Fix(i, 'Zmieniono KillMode na control-group', stripped, fixed))
+                fixed_lines[i - 1] = indent_str + fixed
 
     # Post-analysis checks
     if not has_description:

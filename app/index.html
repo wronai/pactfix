@@ -1134,7 +1134,9 @@
                     if (fix && fix.message) {
                         const hint = fix.after ? `Poprawna linia: ${fix.after}` : '';
                         const titleAttr = hint ? ` title="${escapeAttribute(hint)}"` : '';
-                        html += `<span class="fix-annotation"${titleAttr}>✅ ${escapeHtml(fix.message)} <button class="apply-fix-btn" onclick="applyFixForLine(${lineNum}, ${fixIndex})">Zastosuj</button></span>\n`;
+                        const canApply = !!(fix.after || (Array.isArray(fix.edits) && fix.edits.length));
+                        const btn = canApply ? ` <button class="apply-fix-btn" onclick="applyFixForLine(${lineNum}, ${fixIndex})">Zastosuj</button>` : '';
+                        html += `<span class="fix-annotation"${titleAttr}>✅ ${escapeHtml(fix.message)}${btn}</span>\n`;
                     }
                 });
                 
@@ -1508,14 +1510,62 @@ if __name__ == "__main__":
             lines[idx] = indent + withoutIndent;
         }
 
+        function _applyEditsToLines(lines, edits) {
+            if (!Array.isArray(edits) || edits.length === 0) return;
+            const sorted = [...edits].sort((a, b) => {
+                const aStart = Number(a?.startLine || 0);
+                const bStart = Number(b?.startLine || 0);
+                if (aStart !== bStart) return bStart - aStart;
+                const aEnd = Number(a?.endLine || 0);
+                const bEnd = Number(b?.endLine || 0);
+                return bEnd - aEnd;
+            });
+
+            for (const e of sorted) {
+                const startLine = Number(e?.startLine);
+                const endLine = Number(e?.endLine);
+                if (!Number.isFinite(startLine) || !Number.isFinite(endLine)) continue;
+
+                const replacement = String(e?.replacement ?? '');
+                const replacementLines = replacement === '' ? [] : replacement.split('\n');
+
+                const startIdx = startLine - 1;
+                if (startIdx < 0 || startIdx > lines.length) continue;
+
+                if (endLine < startLine) {
+                    lines.splice(startIdx, 0, ...replacementLines);
+                    continue;
+                }
+
+                const endIdx = endLine - 1;
+                if (endIdx < -1) continue;
+                const deleteCount = Math.max(0, Math.min(lines.length - startIdx, endIdx - startIdx + 1));
+
+                if (e?.preserveIndent && deleteCount === 1 && replacementLines.length === 1) {
+                    const indentMatch = (lines[startIdx] || '').match(/^\s*/);
+                    const indent = indentMatch ? indentMatch[0] : '';
+                    const withoutIndent = replacementLines[0].replace(/^\s*/, '');
+                    lines.splice(startIdx, 1, indent + withoutIndent);
+                } else {
+                    lines.splice(startIdx, deleteCount, ...replacementLines);
+                }
+            }
+        }
+
         function applyFixForLine(lineNum, fixIndex = 0) {
             if (!lastAnalysis || !Array.isArray(lastAnalysis.fixes)) return;
             const lineFixes = lastAnalysis.fixes.filter(f => f && f.line === lineNum);
             const fix = lineFixes[fixIndex];
-            if (!fix || !fix.after) return;
+            if (!fix) return;
 
             const lines = codeInput.value.split('\n');
-            _replaceLinePreservingIndent(lines, lineNum, fix.after);
+            if (Array.isArray(fix.edits) && fix.edits.length) {
+                _applyEditsToLines(lines, fix.edits);
+            } else if (fix.after) {
+                _replaceLinePreservingIndent(lines, lineNum, fix.after);
+            } else {
+                return;
+            }
             codeInput.value = lines.join('\n');
             handleInput();
             showToast(`Zastosowano poprawkę w linii ${lineNum}`, 'success');
@@ -1527,10 +1577,18 @@ if __name__ == "__main__":
                 return;
             }
             const lines = codeInput.value.split('\n');
-            lastAnalysis.fixes.forEach(fix => {
-                if (!fix || !fix.line || !fix.after) return;
-                _replaceLinePreservingIndent(lines, fix.line, fix.after);
-            });
+            const edits = [];
+            for (const fix of lastAnalysis.fixes) {
+                if (!fix || !fix.line) continue;
+                if (Array.isArray(fix.edits) && fix.edits.length) {
+                    edits.push(...fix.edits);
+                    continue;
+                }
+                if (fix.after) {
+                    edits.push({ startLine: fix.line, endLine: fix.line, replacement: fix.after, preserveIndent: true });
+                }
+            }
+            _applyEditsToLines(lines, edits);
             codeInput.value = lines.join('\n');
             handleInput();
             showToast('Zastosowano wszystkie poprawki', 'success');
