@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help test test-frontend test-backend test-pactfix test-sandbox lint publish build-pactfix bump-patch clean
+.PHONY: help test test-frontend test-backend test-pactfix test-sandbox test-sandbox-tests lint publish build-pactfix bump-patch clean
 
 PACTFIX_DIR ?= pactfix-py
 
@@ -9,6 +9,8 @@ help:
 	@echo "  make test           - run all tests (frontend e2e + pactfix-py)"
 	@echo "  make test-frontend  - run Playwright e2e tests"
 	@echo "  make test-pactfix   - run pactfix-py pytest suite"
+	@echo "  make test-sandbox   - run pactfix sandbox smoke test on all test-projects"
+	@echo "  make test-sandbox-tests - run sandbox smoke test + run in-container test commands (--test)"
 	@echo "  make test-backend   - basic python syntax check for server.py"
 	@echo "  make publish        - build + upload python package pactfix (requires twine credentials)"
 
@@ -26,6 +28,9 @@ test-pactfix:
 
 test-sandbox:
 	cd $(PACTFIX_DIR) && ./scripts/test-sandboxes.sh
+
+test-sandbox-tests:
+	cd $(PACTFIX_DIR) && ./scripts/test-sandboxes.sh --test
 
 build-pactfix:
 	cd $(PACTFIX_DIR) && python -m pip install -q --upgrade build twine
