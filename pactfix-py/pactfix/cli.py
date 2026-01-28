@@ -441,8 +441,9 @@ def process_project(project_path: str, comment: bool = False, sandbox: bool = Fa
     print()
     
     # Find all files to process
-    extensions = ['.sh', '.py', '.php', '.js', '.ts', '.sql', '.tf', '.yml', '.yaml', 
-                  '.conf', '.go', '.rs', '.java', '.cs', '.rb', '.html', '.css']
+    extensions = ['.sh', '.py', '.php', '.js', '.ts', '.sql', '.tf', '.yml', '.yaml',
+                  '.conf', '.go', '.rs', '.java', '.cs', '.rb', '.html', '.css',
+                  '.json', '.jsonc', '.toml', '.ini', '.cfg']
     
     files_to_process = []
     for ext in extensions:

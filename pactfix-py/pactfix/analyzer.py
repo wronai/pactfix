@@ -10,7 +10,8 @@ SUPPORTED_LANGUAGES = [
     'dockerfile', 'docker-compose', 'sql', 'terraform',
     'kubernetes', 'nginx', 'github-actions', 'ansible',
     'typescript', 'go', 'rust', 'java', 'csharp', 'ruby',
-    'makefile', 'yaml', 'apache', 'systemd', 'html', 'css'
+    'makefile', 'yaml', 'apache', 'systemd', 'html', 'css',
+    'json', 'toml', 'ini'
 ]
 
 @dataclass
@@ -97,6 +98,12 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'csharp'
         if fn_lower.endswith('.rb'):
             return 'ruby'
+        if fn_lower.endswith('.json') or fn_lower.endswith('.jsonc'):
+            return 'json'
+        if fn_lower.endswith('.toml'):
+            return 'toml'
+        if fn_lower.endswith('.ini') or fn_lower.endswith('.cfg'):
+            return 'ini'
         if fn_name == 'makefile' or fn_lower.endswith('.mk'):
             return 'makefile'
         if fn_lower.endswith('.html') or fn_lower.endswith('.htm'):
@@ -208,10 +215,26 @@ def detect_language(code: str, filename: str = None) -> str:
         if any(re.search(pattern, line) for line in lines):
             return 'javascript'
     
+    # INI/TOML/JSON detection
+    # JSON: starts with { or [ and contains :
+    stripped_code = code.lstrip()
+    if stripped_code.startswith('{') or stripped_code.startswith('['):
+        if ':' in code:
+            return 'json'
+    # TOML: section headers [x] or key = value
+    if re.search(r'^\s*\[[^\]]+\]\s*$', code, re.MULTILINE) and '=' in code:
+        return 'toml'
+    # INI: section headers [x] and key=value
+    if re.search(r'^\s*\[[^\]]+\]\s*$', code, re.MULTILINE) and re.search(r'^\s*[^#;\[][^=]*=', code, re.MULTILINE):
+        return 'ini'
+
     return 'bash'
 
 
 def add_fix_comments(result: AnalysisResult) -> str:
+    if result.language == 'json':
+        return result.fixed_code
+
     if not result.fixes:
         return result.fixed_code
 
@@ -237,6 +260,8 @@ def add_fix_comments(result: AnalysisResult) -> str:
         'ruby': '#',
         'makefile': '#',
         'yaml': '#',
+        'toml': '#',
+        'ini': ';',
         'apache': '#',
         'systemd': '#',
         'html': '<!--',
@@ -956,6 +981,9 @@ try:
     from .analyzers.systemd import analyze_systemd
     from .analyzers.html import analyze_html
     from .analyzers.css import analyze_css
+    from .analyzers.json_generic import analyze_json
+    from .analyzers.toml_generic import analyze_toml
+    from .analyzers.ini_generic import analyze_ini
     NEW_ANALYZERS_AVAILABLE = True
 except ImportError:
     NEW_ANALYZERS_AVAILABLE = False
@@ -996,6 +1024,9 @@ def analyze_code(code: str, filename: str = None, force_language: str = None) ->
             'systemd': analyze_systemd,
             'html': analyze_html,
             'css': analyze_css,
+            'json': analyze_json,
+            'toml': analyze_toml,
+            'ini': analyze_ini,
         })
     
     analyzer = analyzers.get(language, analyze_bash)

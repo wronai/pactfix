@@ -12,6 +12,9 @@ from .apache import analyze_apache
 from .systemd import analyze_systemd
 from .html import analyze_html
 from .css import analyze_css
+from .json_generic import analyze_json
+from .toml_generic import analyze_toml
+from .ini_generic import analyze_ini
 
 __all__ = [
     'analyze_typescript',
@@ -26,4 +29,7 @@ __all__ = [
     'analyze_systemd',
     'analyze_html',
     'analyze_css',
+    'analyze_json',
+    'analyze_toml',
+    'analyze_ini',
 ]

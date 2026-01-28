@@ -1,0 +1,8 @@
+{
+  "name": "demo",
+  "enabled": True,
+  "items": [1,2,3,],
+  "message": "Hello: world",
+  "dup": 1,
+  "dup": 2
+}

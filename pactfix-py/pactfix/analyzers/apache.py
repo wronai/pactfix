@@ -47,15 +47,24 @@ def analyze_apache(code: str) -> AnalysisResult:
         if stripped.lower().startswith('traceenable'):
             if 'Off' not in stripped:
                 errors.append(Issue(i, 1, 'APACHE003', 'TraceEnable powinien być Off (TRACE attack)'))
+                fixed = 'TraceEnable Off'
+                fixes.append(Fix(i, 'Ustawiono TraceEnable na Off', stripped, fixed))
+                fixed_lines[i-1] = indent_str + fixed
 
         # APACHE004: Options +Indexes enables directory listing
         if 'Options' in stripped and '+Indexes' in stripped:
             directory_listing = True
             warnings.append(Issue(i, 1, 'APACHE004', 'Directory listing włączony - usuń +Indexes'))
+            fixed = stripped.replace('+Indexes', '').replace('  ', ' ').strip()
+            fixes.append(Fix(i, 'Usunięto +Indexes z Options', stripped, fixed))
+            fixed_lines[i-1] = indent_str + fixed
 
         # APACHE005: AllowOverride All is too permissive
         if stripped.lower().startswith('allowoverride') and 'All' in stripped:
             warnings.append(Issue(i, 1, 'APACHE005', 'AllowOverride All - rozważ bardziej restrykcyjne'))
+            fixed = 'AllowOverride None'
+            fixes.append(Fix(i, 'Ustawiono AllowOverride na None', stripped, fixed))
+            fixed_lines[i-1] = indent_str + fixed
 
         # APACHE006: SSL/TLS configuration
         if 'SSLEngine' in stripped and 'on' in stripped.lower():
@@ -90,10 +99,16 @@ def analyze_apache(code: str) -> AnalysisResult:
             timeout_val = re.search(r'\d+', stripped)
             if timeout_val and int(timeout_val.group()) > 300:
                 warnings.append(Issue(i, 1, 'APACHE011', 'Timeout > 300s - może powodować DoS'))
+                fixed = 'Timeout 60'
+                fixes.append(Fix(i, 'Ustawiono Timeout na 60', stripped, fixed))
+                fixed_lines[i-1] = indent_str + fixed
 
         # APACHE012: KeepAlive should be On
         if stripped.lower().startswith('keepalive') and 'Off' in stripped:
             warnings.append(Issue(i, 1, 'APACHE012', 'KeepAlive Off - rozważ włączenie'))
+            fixed = 'KeepAlive On'
+            fixes.append(Fix(i, 'Ustawiono KeepAlive na On', stripped, fixed))
+            fixed_lines[i-1] = indent_str + fixed
 
         # APACHE013: Expose PHP version
         if 'Header' in stripped and 'X-Powered-By' in stripped:

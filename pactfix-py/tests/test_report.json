@@ -1,11 +1,11 @@
 {
   "summary": {
-    "total_tests": 24,
-    "passed_tests": 24,
+    "total_tests": 27,
+    "passed_tests": 27,
     "failed_tests": 0,
-    "total_errors": 91,
-    "total_warnings": 346,
-    "total_fixes": 75,
+    "total_errors": 94,
+    "total_warnings": 353,
+    "total_fixes": 86,
     "languages_tested": [
       "typescript",
       "go",
@@ -15,6 +15,9 @@
       "ruby",
       "makefile",
       "yaml",
+      "json",
+      "toml",
+      "ini",
       "apache",
       "systemd",
       "html",
@@ -32,8 +35,8 @@
       "github-actions",
       "ansible"
     ],
-    "timestamp": "2026-01-28T21:09:11.618761",
-    "duration_seconds": 0.022937
+    "timestamp": "2026-01-28T21:41:15.504361",
+    "duration_seconds": 0.023202
   },
   "results": [
     {
@@ -184,7 +187,7 @@
       "file_path": "/home/tom/github/wronai/pactown-debug/pactfix-py/tests/fixtures/yaml/errors.yaml",
       "errors_found": 5,
       "warnings_found": 18,
-      "fixes_applied": 2,
+      "fixes_applied": 7,
       "expected_min_issues": 5,
       "passed": true,
       "details": [
@@ -199,7 +202,59 @@
         "WARN [YAML004] L11: Wartość yes może być interpretowana jako boolean",
         "WARN [YAML004] L12: Wartość no może być interpretowana jako boolean",
         "FIX L5: Zamieniono tabulatory na spacje",
-        "FIX L8: Usunięto trailing whitespace"
+        "FIX L8: Usunięto trailing whitespace",
+        "FIX L11: Zacytowano wartość yes",
+        "FIX L12: Zacytowano wartość no",
+        "FIX L13: Zacytowano wartość on"
+      ]
+    },
+    {
+      "language": "json",
+      "file_path": "/home/tom/github/wronai/pactown-debug/pactfix-py/tests/fixtures/json/errors.json",
+      "errors_found": 1,
+      "warnings_found": 2,
+      "fixes_applied": 2,
+      "expected_min_issues": 3,
+      "passed": true,
+      "details": [
+        "ERROR [JSON004] L1: Wykryto True/False/None - JSON wymaga true/false/null",
+        "WARN [JSON005] L1: Trailing comma w JSON - usuń przecinek przed } lub ]",
+        "WARN [JSON006] L1: Duplikaty kluczy w JSON: timeout",
+        "FIX L1: Zamieniono True/False/None na true/false/null",
+        "FIX L1: Usunięto trailing commas"
+      ]
+    },
+    {
+      "language": "toml",
+      "file_path": "/home/tom/github/wronai/pactown-debug/pactfix-py/tests/fixtures/toml/errors.toml",
+      "errors_found": 1,
+      "warnings_found": 3,
+      "fixes_applied": 2,
+      "expected_min_issues": 3,
+      "passed": true,
+      "details": [
+        "ERROR [TOML001] L1: Nieprawidłowy TOML: Expected '=' after a key in a key/value pair (at line 15, column 9)",
+        "WARN [TOML002] L1: Tabulatory w TOML - użyj spacji",
+        "WARN [TOML003] L1: Trailing whitespace w TOML",
+        "WARN [TOML004] L1: Podejrzany klucz z odstępami przed = (sprawdź składnię TOML)",
+        "FIX L1: Zamieniono tabulatory na spacje",
+        "FIX L1: Usunięto trailing whitespace"
+      ]
+    },
+    {
+      "language": "ini",
+      "file_path": "/home/tom/github/wronai/pactown-debug/pactfix-py/tests/fixtures/ini/errors.ini",
+      "errors_found": 1,
+      "warnings_found": 2,
+      "fixes_applied": 2,
+      "expected_min_issues": 3,
+      "passed": true,
+      "details": [
+        "ERROR [INI001] L1: Brak sekcji INI: File contains no section headers.\nfile: '<string>', line: 3\n'key=value\\n'",
+        "WARN [INI002] L1: Tabulatory w INI - użyj spacji",
+        "WARN [INI003] L1: Trailing whitespace w INI",
+        "FIX L1: Zamieniono tabulatory na spacje",
+        "FIX L1: Usunięto trailing whitespace"
       ]
     },
     {

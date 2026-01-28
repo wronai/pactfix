@@ -52,6 +52,15 @@ def analyze_yaml(code: str) -> AnalysisResult:
                     if val.lower() != stripped.split(':')[1].strip().lower():
                         continue
                     warnings.append(Issue(i, 1, 'YAML004', f'Wartość {val} może być interpretowana jako boolean'))
+                    m = re.match(r'^(?P<prefix>\s*[^:#]+:\s+)(?P<value>[^#]+?)(?P<comment>\s+#.*)?$', line)
+                    if m:
+                        prefix = m.group('prefix')
+                        value = m.group('value').strip()
+                        comment = m.group('comment') or ''
+                        if value.lower() == val.lower() and not (value.startswith('"') or value.startswith("'")):
+                            fixed = f"{prefix}\"{value}\"{comment}".rstrip()
+                            fixes.append(Fix(i, f'Zacytowano wartość {val}', line.rstrip(), fixed))
+                            fixed_lines[i - 1] = fixed
 
         # YAML005: Colon in unquoted string
         value_match = re.search(r':\s+([^"\'\[{#][^#]*)', stripped)
@@ -59,6 +68,16 @@ def analyze_yaml(code: str) -> AnalysisResult:
             value = value_match.group(1).strip()
             if ':' in value and not value.startswith('http'):
                 warnings.append(Issue(i, 1, 'YAML005', 'Dwukropek w wartości bez cudzysłowów'))
+                m = re.match(r'^(?P<prefix>\s*[^:#]+:\s+)(?P<value>[^#]+?)(?P<comment>\s+#.*)?$', line)
+                if m:
+                    prefix = m.group('prefix')
+                    raw_value = m.group('value').strip()
+                    comment = m.group('comment') or ''
+                    if not (raw_value.startswith('"') or raw_value.startswith("'")):
+                        escaped = raw_value.replace('"', '\\"')
+                        fixed = f"{prefix}\"{escaped}\"{comment}".rstrip()
+                        fixes.append(Fix(i, 'Dodano cudzysłowy dla wartości z :', line.rstrip(), fixed))
+                        fixed_lines[i - 1] = fixed
 
         # YAML006: Very long lines
         if len(line) > 120:

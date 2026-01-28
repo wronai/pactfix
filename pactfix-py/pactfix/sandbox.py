@@ -12,10 +12,9 @@ from datetime import datetime
 LANGUAGE_DOCKERFILES = {
     'python': '''FROM python:3.11-slim
 WORKDIR /app
-COPY requirements.txt* ./
-RUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || true
 COPY . .
-CMD ["sh", "-c", "python -m pytest -v || python main.py || echo 'No entrypoint found'"]
+RUN if [ -f "requirements.txt" ]; then pip install --no-cache-dir -r requirements.txt 2>/dev/null || true; fi
+CMD ["sh", "-c", "python -m pytest -v || python -m unittest discover || python main.py || echo 'No entrypoint found'"]
 ''',
 
     'nodejs': '''FROM node:20-slim
