@@ -183,6 +183,45 @@ test.describe('Pactown Live Debug - E2E Tests', () => {
 
     await expect(page.locator('#codeOutput .code-line')).not.toHaveCount(0);
   });
+
+  test('should generate share hash in URL and restore code from hash', async ({ page }) => {
+    const code = '#!/bin/bash\necho "Hello"\n';
+    await page.locator('#codeInput').fill(code);
+
+    await waitForAnalysisDone(page);
+
+    await page.waitForFunction(() => {
+      const h = window.location.hash || '';
+      return /^#[a-f0-9]{64}$/i.test(h);
+    }, { timeout: 5000 });
+
+    const hash = await page.evaluate(() => (window.location.hash || '').slice(1));
+
+    await page.goto(`/#${hash}`);
+
+    await expect(page.locator('#codeInput')).toHaveValue(code);
+  });
+
+  test('should restore markdown mode from hash', async ({ page }) => {
+    await page.click('#modeMarkdownBtn');
+
+    const md = '# Title\n\n```bash\necho $VAR\n```\n';
+    await page.locator('#codeInput').fill(md);
+
+    await waitForAnalysisDone(page);
+
+    await page.waitForFunction(() => {
+      const h = window.location.hash || '';
+      return /^#[a-f0-9]{64}$/i.test(h);
+    }, { timeout: 5000 });
+
+    const hash = await page.evaluate(() => (window.location.hash || '').slice(1));
+
+    await page.goto(`/#${hash}`);
+
+    await expect(page.locator('#modeMarkdownBtn')).toHaveClass(/btn-toggle-active/);
+    await expect(page.locator('#codeInput')).toHaveValue(md);
+  });
 });
 
 test.describe('Python Analysis Tests', () => {
