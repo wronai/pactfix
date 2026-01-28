@@ -1,0 +1,48 @@
+# Systemd Error Fixture - 15 different error types
+
+# SYSTEMD001: Description missing or too short
+[Unit]
+Description=App
+
+# SYSTEMD002: Missing After dependency (no After= line)
+
+[Service]
+# SYSTEMD006: Invalid Type
+Type=invalid_type
+
+# SYSTEMD007: ExecStart without absolute path
+ExecStart=python app.py
+
+# SYSTEMD003: Restart=no
+Restart=no
+
+# SYSTEMD004: Running as root (no User specified)
+
+# SYSTEMD008: Hardcoded secrets in Environment
+Environment=DATABASE_PASSWORD=secret123
+Environment=API_KEY=sk-abcdef123456
+Environment=SECRET_TOKEN=bearer_xyz
+
+# SYSTEMD009: Restart=always without RestartSec
+Restart=always
+
+# SYSTEMD010: PrivateTmp disabled
+PrivateTmp=false
+
+# SYSTEMD011: ProtectSystem not strict
+ProtectSystem=no
+
+# SYSTEMD012: NoNewPrivileges disabled
+NoNewPrivileges=false
+
+# SYSTEMD013: Timeout infinity
+TimeoutStartSec=infinity
+TimeoutStopSec=infinity
+
+# SYSTEMD015: KillMode none
+KillMode=none
+
+# SYSTEMD005: Missing WorkingDirectory
+
+[Install]
+WantedBy=multi-user.target

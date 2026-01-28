@@ -1,0 +1,48 @@
+# YAML Error Fixture - 10 different error types
+
+# YAML002: Tabs instead of spaces (this line uses tab)
+config:
+	database: mysql
+
+# YAML003: Trailing whitespace   
+name: application   
+
+# YAML004: Unquoted special values
+enabled: yes
+disabled: no
+debug: on
+production: off
+
+# YAML005: Colon in unquoted string
+message: Error: Something went wrong
+
+# YAML006: Very long line that exceeds 120 characters which is considered too long for readability and should be split into multiple lines or use YAML multiline syntax
+description: This is an extremely long description that goes way beyond the recommended line length limit and should probably be reformatted using YAML block scalar syntax instead
+
+# YAML007: Duplicate keys (same indent level)
+database:
+  host: localhost
+  port: 5432
+  host: 127.0.0.1
+
+# YAML008: Hardcoded secrets
+credentials:
+  password: mysecretpassword123
+  api_key: sk-abcdef123456
+  token: bearer_xyz789
+  secret: super_secret_value
+
+# YAML009: Empty values
+empty_value:
+another_empty:
+
+# YAML010: Anchor without alias usage
+defaults: &unused_anchor
+  timeout: 30
+  retries: 3
+
+# YAML001: Inconsistent indentation
+services:
+   web:
+     port: 8080
+    host: localhost
