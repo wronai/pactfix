@@ -1,0 +1,7 @@
+FROM node:20-slim
+WORKDIR /app
+COPY package*.json ./
+RUN npm install 2>/dev/null || true
+COPY . .
+RUN npm run build 2>/dev/null || npx tsc 2>/dev/null || true
+CMD ["npm", "test", "||", "npm", "start"]

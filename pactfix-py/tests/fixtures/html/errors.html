@@ -1,0 +1,61 @@
+<!-- HTML Error Fixture - 15 different error types -->
+
+<!-- HTML001: Missing DOCTYPE -->
+<html>
+<!-- HTML002: Missing lang attribute -->
+<head>
+    <!-- HTML003: Missing charset (no meta charset) -->
+    <!-- HTML004: Missing viewport meta -->
+    <!-- HTML005: Missing or short title -->
+    <title>Hi</title>
+</head>
+<body>
+    <!-- HTML006: img without alt -->
+    <img src="logo.png">
+    <img src="banner.jpg" width="100">
+    
+    <!-- HTML007: Inline styles -->
+    <div style="color: red; font-size: 14px;">Styled text</div>
+    
+    <!-- HTML008: Inline event handlers -->
+    <button onclick="handleClick()">Click me</button>
+    <div onmouseover="highlight()" onload="init()">Hover me</div>
+    
+    <!-- HTML009: Deprecated tags -->
+    <font color="blue">Blue text</font>
+    <center>Centered content</center>
+    <b>Bold text</b>
+    <i>Italic text</i>
+    
+    <!-- HTML010: Form without action -->
+    <form method="post">
+        <!-- HTML011: Input without id/aria-label -->
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit" value="Login">
+    </form>
+    
+    <!-- HTML012: target="_blank" without rel -->
+    <a href="https://example.com" target="_blank">External link</a>
+    
+    <!-- HTML013: HTTP links -->
+    <a href="http://insecure-site.com">Insecure link</a>
+    <link href="http://cdn.example.com/style.css" rel="stylesheet">
+    
+    <!-- HTML014: Empty href -->
+    <a href="">Empty link</a>
+    <a href="#">Hash link</a>
+    
+    <!-- HTML015: Table without headers -->
+    <table>
+        <tr>
+            <td>Name</td>
+            <td>Age</td>
+        </tr>
+        <tr>
+            <td>John</td>
+            <td>30</td>
+        </tr>
+    </table>
+</body>
+</html>

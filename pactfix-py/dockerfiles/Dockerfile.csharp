@@ -1,0 +1,7 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /app
+COPY *.csproj ./
+RUN dotnet restore 2>/dev/null || true
+COPY . .
+RUN dotnet build --configuration Release
+CMD ["dotnet", "test", "||", "dotnet", "run"]

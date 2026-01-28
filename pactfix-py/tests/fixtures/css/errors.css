@@ -1,0 +1,111 @@
+/* CSS Error Fixture - 15 different error types */
+
+/* CSS001: !important usage */
+.header {
+    color: red !important;
+    font-size: 16px !important;
+}
+
+/* CSS002: ID selectors (too specific) */
+#main-content {
+    padding: 20px;
+}
+
+#sidebar {
+    width: 300px;
+}
+
+/* CSS003: Vendor prefixes without standard */
+.animated {
+    -webkit-transform: rotate(45deg);
+    -moz-transform: rotate(45deg);
+}
+
+/* CSS004: Hardcoded colors */
+.button {
+    background-color: #ff5733;
+    border-color: #3498db;
+    color: #2ecc71;
+}
+
+/* CSS005: px units for font-size */
+body {
+    font-size: 14px;
+}
+
+h1 {
+    font-size: 32px;
+}
+
+/* CSS006: Zero values with units */
+.container {
+    margin: 0px;
+    padding: 0rem;
+    border-width: 0em;
+}
+
+/* CSS007: Universal selector */
+* {
+    box-sizing: border-box;
+}
+
+div * {
+    margin: 0;
+}
+
+/* CSS008: Empty rules */
+.empty-class {
+}
+
+.another-empty {}
+
+/* CSS009: Duplicate properties */
+.duplicate {
+    color: blue;
+    font-size: 14px;
+    color: red;
+}
+
+/* CSS010: Float usage */
+.sidebar {
+    float: left;
+    width: 200px;
+}
+
+.content {
+    float: right;
+}
+
+/* CSS011: Outline: none without alternative */
+button:focus {
+    outline: none;
+}
+
+a:focus {
+    outline: none;
+}
+
+/* CSS012: High z-index */
+.modal {
+    z-index: 99999;
+}
+
+.tooltip {
+    z-index: 10000;
+}
+
+/* CSS013: calc() with mixed units */
+.complex-calc {
+    width: calc(100% - 20px + 2em - 1rem);
+}
+
+/* CSS014: Deprecated properties */
+.old-style {
+    clip: rect(0, 0, 0, 0);
+    zoom: 1.5;
+}
+
+/* CSS015: Text-transform uppercase */
+.uppercase {
+    text-transform: uppercase;
+}
