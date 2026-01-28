@@ -169,12 +169,16 @@ def process_batch(directory: str, verbose: bool = False) -> int:
 
 def fix_all_examples(verbose: bool = False) -> int:
     """Fix all files in examples/ directory and save to fixed/ subdirectories."""
-    examples_dir = Path('examples')
+    env_examples = os.environ.get('PACTFIX_EXAMPLES_DIR')
+    examples_dir = Path(env_examples) if env_examples else Path('examples')
+ 
     if not examples_dir.exists():
-        # Try to find examples relative to package
-        script_dir = Path(__file__).parent.parent.parent.parent
-        examples_dir = script_dir / 'examples'
-    
+        for parent in Path(__file__).resolve().parents:
+            candidate = parent / 'examples'
+            if candidate.exists() and candidate.is_dir():
+                examples_dir = candidate
+                break
+     
     if not examples_dir.exists():
         print(f"❌ Nie znaleziono katalogu examples/", file=sys.stderr)
         return 1

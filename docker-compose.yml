@@ -1,8 +1,6 @@
 # Pactfix Live Debug - Docker Compose
 # Run: docker-compose up --build
 
-version: '3.8'
-
 services:
   # Main frontend + backend service
   pactfix-web:
@@ -38,7 +36,7 @@ services:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
