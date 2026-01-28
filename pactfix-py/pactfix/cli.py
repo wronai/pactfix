@@ -497,7 +497,7 @@ def process_project(project_path: str, comment: bool = False, sandbox: bool = Fa
             rel_path = file_path.relative_to(path)
             
             # Save fixed file
-            if result.fixes:
+            if result.fixed_code != code:
                 if sandbox:
                     # Sandbox mode: save to .pactfix/fixed/
                     fixed_dir = pactfix_dir / 'fixed'

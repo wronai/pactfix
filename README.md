@@ -155,7 +155,7 @@ pactown-live-debug/
 
 ## License
 
-MIT License - Softreck © 2026
+Apache 2.0 License - Softreck © 2026
 
 ---
 

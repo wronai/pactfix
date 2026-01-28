@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const port = process.env.PLAYWRIGHT_PORT || process.env.PORT || '8099';
+const port = process.env.PLAYWRIGHT_PORT || process.env.PORT || '8081';
 
 export default defineConfig({
   testDir: './e2e',
@@ -17,7 +17,12 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          executablePath: '/snap/bin/chromium'
+        }
+      },
     },
   ],
   webServer: {

@@ -811,6 +811,7 @@
                         </div>
                     </div>
                 </div>
+                <div id="proposedActions" style="display:none; padding: 12px 16px; border-top: 1px solid var(--border-color);"></div>
                 <div class="stats-bar">
                     <div class="stat">
                         <span>Błędy:</span>
@@ -866,6 +867,7 @@
         const codeOutput = document.getElementById('codeOutput');
         const inputLineNumbers = document.getElementById('inputLineNumbers');
         const outputLineNumbers = document.getElementById('outputLineNumbers');
+        const proposedActions = document.getElementById('proposedActions');
         const historyContent = document.getElementById('historyContent');
         const inputTitleText = document.getElementById('inputTitleText');
         const outputTitleText = document.getElementById('outputTitleText');
@@ -1094,6 +1096,10 @@
         function displayResult(result) {
             if (!result.fixedCode) {
                 codeOutput.innerHTML = '<div class="empty-state"><p>Brak poprawek do wyświetlenia</p></div>';
+                if (proposedActions) {
+                    proposedActions.style.display = 'none';
+                    proposedActions.innerHTML = '';
+                }
                 return;
             }
 
@@ -1101,6 +1107,10 @@
                 outputLineNumbers.style.display = 'none';
                 codeOutput.classList.add('markdown-preview');
                 codeOutput.innerHTML = renderMarkdown(result.fixedCode);
+                if (proposedActions) {
+                    proposedActions.style.display = 'none';
+                    proposedActions.innerHTML = '';
+                }
                 return;
             }
 
@@ -1150,16 +1160,26 @@
                 // Add warning annotation
                 warnings.forEach(warning => {
                     if (warning && warning.message) {
-                        const hintFix = fixes.find(f => f && f.after);
-                        const hint = hintFix ? `Poprawna linia: ${hintFix.after}` : '';
+                        const hintFix = fixes.find(f => f && (f.after || (Array.isArray(f.edits) && f.edits.length)));
+                        const hint = hintFix ? describeFixHint(hintFix, lineNum) : '';
                         const titleAttr = hint ? ` title="${escapeAttribute(hint)}"` : '';
-                        html += `<span class="warning-annotation"${titleAttr}>⚠️ ${escapeHtml(warning.message)}</span>\n`;
+                        const canApply = !!hintFix;
+                        const fixIndex = hintFix ? fixes.indexOf(hintFix) : -1;
+                        const actionLabel = hintFix ? describeFixAction(hintFix, lineNum) : '';
+                        const actionText = actionLabel ? ` Propozycja: ${escapeHtml(actionLabel)}` : '';
+                        const btn = (canApply && fixIndex >= 0) ? ` <button class="apply-fix-btn" onclick="applyFixForLine(${lineNum}, ${fixIndex})">Zastosuj</button>` : '';
+                        html += `<span class="warning-annotation"${titleAttr}>⚠️ ${escapeHtml(warning.message)}${actionText}${btn}</span>\n`;
                     }
                 });
             });
 
             renderLineNumbers(outputLineNumbers, lines.length);
             codeOutput.innerHTML = html;
+
+            if (proposedActions) {
+                proposedActions.innerHTML = renderProposedActions(result);
+                proposedActions.style.display = proposedActions.innerHTML ? '' : 'none';
+            }
         }
 
         function renderMarkdown(md) {
@@ -1457,7 +1477,7 @@ if __name__ == "__main__":
         function downloadOutput() {
             const text = codeOutput.textContent;
             if (!text || text.includes('Wklej kod')) {
-                showToast('Brak kodu do pobrania', 'error');
+                showToast('Brak kodu', 'error');
                 return;
             }
 
@@ -1508,6 +1528,126 @@ if __name__ == "__main__":
             const indent = indentMatch ? indentMatch[0] : '';
             const withoutIndent = String(newLine || '').replace(/^\s*/, '');
             lines[idx] = indent + withoutIndent;
+        }
+
+        function describeFixAction(fix, lineNum) {
+            if (!fix) return '';
+
+            if (Array.isArray(fix.edits) && fix.edits.length) {
+                if (fix.edits.length === 1) {
+                    const e = fix.edits[0] || {};
+                    const startLine = Number(e.startLine);
+                    const endLine = Number(e.endLine);
+                    const replacement = String(e.replacement ?? '');
+
+                    if (Number.isFinite(startLine) && Number.isFinite(endLine)) {
+                        if (startLine === lineNum && endLine === lineNum && replacement === '') return 'Usuń linię';
+                        if (startLine === lineNum && endLine === lineNum) return 'Zamień linię';
+                        if (endLine < startLine) {
+                            if (startLine === lineNum + 1 && endLine === lineNum) return 'Dodaj linię poniżej';
+                            if (startLine === lineNum && endLine === lineNum - 1) return 'Dodaj linię powyżej';
+                            return 'Dodaj linie';
+                        }
+                        return `Zastąp linie ${startLine}-${endLine}`;
+                    }
+                }
+                return `Zastosuj ${fix.edits.length} zmiany`;
+            }
+
+            if (fix.after) return 'Zamień linię';
+            return '';
+        }
+
+        function applyFixByIndex(fixGlobalIndex) {
+            if (!lastAnalysis || !Array.isArray(lastAnalysis.fixes)) return;
+            const fix = lastAnalysis.fixes[fixGlobalIndex];
+            if (!fix || !fix.line) return;
+
+            const lineNum = fix.line;
+            const lines = codeInput.value.split('\n');
+
+            if (Array.isArray(fix.edits) && fix.edits.length) {
+                _applyEditsToLines(lines, fix.edits);
+            } else if (fix.after) {
+                _replaceLinePreservingIndent(lines, lineNum, fix.after);
+            } else {
+                return;
+            }
+
+            codeInput.value = lines.join('\n');
+            handleInput();
+            showToast(`Zastosowano poprawkę (linia ${lineNum})`, 'success');
+        }
+
+        function renderProposedActions(result) {
+            const fixes = Array.isArray(result?.fixes) ? result.fixes : [];
+            if (fixes.length === 0) return '';
+
+            let html = '';
+            html += `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">`;
+            html += `<div style="font-weight:600;">Proponowane akcje</div>`;
+            html += `<div style="opacity:0.75; font-size:12px;">${fixes.length}</div>`;
+            html += `</div>`;
+
+            html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
+
+            fixes.forEach((fix, idx) => {
+                if (!fix) return;
+                const canApply = !!(fix.after || (Array.isArray(fix.edits) && fix.edits.length));
+                const action = describeFixAction(fix, fix.line || 0);
+                const title = (fix.message || fix.description || '').trim();
+
+                let preview = '';
+                if (Array.isArray(fix.edits) && fix.edits.length === 1) {
+                    const e = fix.edits[0] || {};
+                    const replacement = String(e.replacement ?? '');
+                    preview = replacement ? replacement : '(usunięcie)';
+                } else if (fix.after) {
+                    preview = fix.after;
+                } else if (Array.isArray(fix.edits) && fix.edits.length > 1) {
+                    preview = `${fix.edits.length} zmiany`;
+                }
+
+                const btn = canApply ? `<button class="btn btn-secondary" onclick="applyFixByIndex(${idx})">Zastosuj</button>` : '';
+                const line = fix.line ? `Linia ${fix.line}` : '';
+                const actionText = action ? escapeHtml(action) : '';
+
+                html += `<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--border-color); border-radius:8px; background: var(--bg-primary);">`;
+                html += `<div style="min-width:0; flex:1;">`;
+                html += `<div style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">`;
+                html += `<div style="font-weight:600;">${escapeHtml(title || 'Proponowana zmiana')}</div>`;
+                html += line ? `<div style="opacity:0.75; font-size:12px;">${escapeHtml(line)}</div>` : '';
+                html += actionText ? `<div style="opacity:0.75; font-size:12px;">${actionText}</div>` : '';
+                html += `</div>`;
+                html += preview ? `<div style="margin-top:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:12px; opacity:0.9; white-space:pre-wrap; word-break:break-word;">${escapeHtml(preview)}</div>` : '';
+                html += `</div>`;
+                html += `<div style="flex:none;">${btn}</div>`;
+                html += `</div>`;
+            });
+
+            html += `</div>`;
+            return html;
+        }
+
+        function describeFixHint(fix, lineNum) {
+            if (!fix) return '';
+
+            if (Array.isArray(fix.edits) && fix.edits.length === 1) {
+                const e = fix.edits[0] || {};
+                const startLine = Number(e.startLine);
+                const endLine = Number(e.endLine);
+                const replacement = String(e.replacement ?? '');
+
+                if (Number.isFinite(startLine) && Number.isFinite(endLine)) {
+                    if (startLine === lineNum && endLine === lineNum && replacement === '') return 'Propozycja: usuń tę linię';
+                    if (endLine < startLine) return `Propozycja: dodaj: ${replacement}`;
+                    return replacement ? `Propozycja: ${replacement}` : '';
+                }
+            }
+
+            if (fix.after) return `Poprawna linia: ${fix.after}`;
+            if (Array.isArray(fix.edits) && fix.edits.length) return `Propozycja: zastosuj ${fix.edits.length} zmiany`;
+            return '';
         }
 
         function _applyEditsToLines(lines, edits) {
