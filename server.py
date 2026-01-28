@@ -5,6 +5,7 @@ Real-time Bash script analysis and auto-fix using ShellCheck
 """
 
 import json
+import hashlib
 import subprocess
 import re
 import os
@@ -14,6 +15,7 @@ import urllib.error
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -30,6 +32,54 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent
+
+SNIPPET_DIR = Path(os.environ.get('SNIPPET_DIR', '/tmp/pactown-live-debug-snippets')).resolve()
+SNIPPET_DIR.mkdir(parents=True, exist_ok=True)
+SNIPPET_MAX_CHARS = int(os.environ.get('SNIPPET_MAX_CHARS', '200000'))
+_SNIPPET_LOCK = threading.Lock()
+
+
+def _snippet_id_for(code: str, mode: str | None = None) -> str:
+    h = hashlib.sha256()
+    h.update((mode or '').encode('utf-8'))
+    h.update(b'\n')
+    h.update(code.encode('utf-8'))
+    return h.hexdigest()
+
+
+def _snippet_path(snippet_id: str) -> Path:
+    return SNIPPET_DIR / f"{snippet_id}.json"
+
+
+def _load_snippet(snippet_id: str) -> dict | None:
+    p = _snippet_path(snippet_id)
+    try:
+        if not p.exists() or not p.is_file():
+            return None
+        data = json.loads(p.read_text(encoding='utf-8'))
+        if not isinstance(data, dict):
+            return None
+        code = data.get('code')
+        if not isinstance(code, str):
+            return None
+        mode = data.get('mode')
+        if mode is not None and not isinstance(mode, str):
+            mode = None
+        if mode not in (None, 'code', 'markdown'):
+            mode = None
+        return {'code': code, 'mode': mode}
+    except Exception:
+        return None
+
+
+def _store_snippet(snippet_id: str, snippet: dict) -> None:
+    p = _snippet_path(snippet_id)
+    with _SNIPPET_LOCK:
+        if p.exists():
+            return
+        tmp = p.with_suffix(p.suffix + '.tmp')
+        tmp.write_text(json.dumps(snippet, ensure_ascii=False), encoding='utf-8')
+        tmp.replace(p)
 
 # Common bash fixes - patterns and their corrections
 BASH_FIXES = [
@@ -1858,7 +1908,8 @@ class DebugHandler(SimpleHTTPRequestHandler):
     
     def do_GET(self):
         """Handle GET requests."""
-        if self.path == '/api/health':
+        path = urlparse(self.path).path
+        if path == '/api/health':
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1892,12 +1943,30 @@ class DebugHandler(SimpleHTTPRequestHandler):
                 }
             }
             self.wfile.write(json.dumps(health).encode())
+        elif path.startswith('/api/snippet/'):
+            snippet_id = path[len('/api/snippet/'):].strip()
+            if not re.fullmatch(r'[a-fA-F0-9]{64}', snippet_id or ''):
+                self.send_error(400, 'Invalid snippet id')
+                return
+            snippet = _load_snippet(snippet_id)
+            if snippet is None:
+                self.send_error(404, 'Not Found')
+                return
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('ETag', f'"{snippet_id}"')
+            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+            self.end_headers()
+            self.wfile.write(json.dumps(snippet, ensure_ascii=False).encode('utf-8'))
         else:
             super().do_GET()
     
     def do_POST(self):
         """Handle POST requests for code analysis."""
-        if self.path == '/api/batch_analyze':
+        path = urlparse(self.path).path
+        if path == '/api/batch_analyze':
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
 
@@ -1935,7 +2004,42 @@ class DebugHandler(SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        if self.path == '/api/analyze':
+        if path == '/api/snippet':
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+
+            try:
+                data = json.loads(body or b'{}')
+                code = data.get('code')
+                mode = data.get('mode')
+
+                if not isinstance(code, str):
+                    self.send_error(400, 'Invalid code')
+                    return
+                if len(code) > SNIPPET_MAX_CHARS:
+                    self.send_error(413, 'Snippet too large')
+                    return
+                if mode is not None and not isinstance(mode, str):
+                    mode = None
+                if mode not in (None, 'code', 'markdown'):
+                    mode = None
+
+                snippet_id = _snippet_id_for(code, mode)
+                _store_snippet(snippet_id, {'code': code, 'mode': mode})
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'id': snippet_id}).encode('utf-8'))
+            except json.JSONDecodeError as e:
+                self.send_error(400, f'Invalid JSON: {e}')
+            except Exception as e:
+                logger.error(f"Snippet store error: {e}")
+                self.send_error(500, str(e))
+            return
+
+        if path == '/api/analyze':
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             

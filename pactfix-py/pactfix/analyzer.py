@@ -45,7 +45,7 @@ class AnalysisResult:
             'fixedCode': self.fixed_code,
             'errors': [asdict(e) for e in self.errors],
             'warnings': [asdict(w) for w in self.warnings],
-            'fixes': [asdict(f) for f in self.fixes],
+            'fixes': [{**asdict(f), 'message': f.description} for f in self.fixes],
             'context': self.context
         }
 
@@ -335,6 +335,28 @@ def _split_bash_comment(line: str) -> tuple[str, str]:
     return line, ''
 
 
+def _split_python_comment(line: str) -> tuple[str, str]:
+    in_single = False
+    in_double = False
+    escaped = False
+    for i, ch in enumerate(line):
+        if escaped:
+            escaped = False
+            continue
+        if ch == '\\':
+            escaped = True
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if ch == '#' and not in_single and not in_double:
+            return line[:i], line[i:]
+    return line, ''
+
+
 def analyze_bash(code: str) -> AnalysisResult:
     """Analyze Bash script."""
     errors, warnings, fixes = [], [], []
@@ -388,7 +410,11 @@ def analyze_python(code: str) -> AnalysisResult:
     fixed_lines = lines.copy()
     
     for i, line in enumerate(lines, 1):
-        stripped = line.strip()
+        current_line = fixed_lines[i - 1]
+        stripped = current_line.strip()
+        code_part, comment_part = _split_python_comment(current_line)
+        code_stripped = code_part.strip()
+        in_condition_stmt = code_stripped.startswith(('if ', 'elif ', 'while ', 'assert '))
         
         # Python 2 print statement
         if re.match(r'^print\s+["\']', stripped) or re.match(r'^print\s+\w', stripped):
@@ -398,20 +424,85 @@ def analyze_python(code: str) -> AnalysisResult:
                 if match:
                     fixed = f'print({match.group(1)})'
                     fixes.append(Fix(i, 'Dodano nawiasy do print()', stripped, fixed))
-                    fixed_lines[i-1] = line.replace(stripped, fixed)
+                    fixed_lines[i - 1] = current_line.replace(stripped, fixed)
+                    current_line = fixed_lines[i - 1]
+                    code_part, comment_part = _split_python_comment(current_line)
+                    code_stripped = code_part.strip()
+                    stripped = current_line.strip()
         
         # Bare except
-        if re.match(r'^except\s*:', stripped):
+        if re.match(r'^except\s*:', code_stripped):
             warnings.append(Issue(i, 1, 'PY002', 'Unikaj pustego except: - złap konkretne wyjątki'))
+            if re.match(r'^except\s*:\s*$', code_stripped):
+                fixed = re.sub(r'^except\s*:\s*$', 'except Exception:', code_stripped)
+                if fixed != code_stripped:
+                    fixes.append(Fix(i, 'Zmieniono except: na except Exception:', code_stripped, fixed))
+                    fixed_lines[i - 1] = (code_part[:len(code_part) - len(code_part.lstrip())] + fixed + comment_part)
+                    current_line = fixed_lines[i - 1]
+                    code_part, comment_part = _split_python_comment(current_line)
+                    code_stripped = code_part.strip()
+                    stripped = current_line.strip()
         
         # Mutable default argument
         if re.search(r'def\s+\w+\s*\([^)]*=\s*(\[\]|\{\})', stripped):
             warnings.append(Issue(i, 1, 'PY003', 'Mutable default argument - użyj None'))
         
         # == None instead of is None
-        if '== None' in stripped or '!= None' in stripped:
+        if in_condition_stmt and ('== None' in code_part or '!= None' in code_part):
             warnings.append(Issue(i, 1, 'PY004', 'Użyj "is None" zamiast "== None"'))
-    
+            fixed_code = code_part
+            fixed_code = re.sub(r'==\s*None\b', 'is None', fixed_code)
+            fixed_code = re.sub(r'!=\s*None\b', 'is not None', fixed_code)
+            if fixed_code != code_part:
+                before = code_part.strip()
+                after = fixed_code.strip()
+                fixes.append(Fix(i, 'Zmieniono porównanie do None na is None/is not None', before, after))
+                fixed_lines[i - 1] = fixed_code + comment_part
+                current_line = fixed_lines[i - 1]
+                code_part, comment_part = _split_python_comment(current_line)
+                code_stripped = code_part.strip()
+                stripped = current_line.strip()
+
+        # type(x) == T instead of isinstance(x, T)
+        m_type_cmp = None
+        if in_condition_stmt:
+            m_type_cmp = re.search(
+                r'\btype\s*\(\s*(?P<expr>[^)]+?)\s*\)\s*==\s*(?P<typ>list|dict|tuple|set)\b',
+                code_part,
+            )
+        if m_type_cmp:
+            warnings.append(Issue(i, 1, 'PY007', 'Rozważ isinstance() zamiast type() == ...'))
+            expr = m_type_cmp.group('expr')
+            typ = m_type_cmp.group('typ')
+            before = m_type_cmp.group(0)
+            after = f'isinstance({expr}, {typ})'
+            fixed_code = code_part.replace(before, after)
+            if fixed_code != code_part:
+                fixes.append(Fix(i, 'Zamieniono type(x) == T na isinstance(x, T)', before.strip(), after.strip()))
+                fixed_lines[i - 1] = fixed_code + comment_part
+                current_line = fixed_lines[i - 1]
+                code_part, comment_part = _split_python_comment(current_line)
+                code_stripped = code_part.strip()
+                stripped = current_line.strip()
+
+        # Using 'is'/'is not' for literal string/int comparison
+        literal_pat = r'("[^"]*"|\'[^\']*\'|\d+)'
+        tail_pat = r'(?=\s|$|:|,|\)|\]|\})'
+        is_not_pat = rf'\bis\s+not\s+(?!None\b){literal_pat}{tail_pat}'
+        is_pat = rf'\bis\s+(?!None\b){literal_pat}{tail_pat}'
+        if in_condition_stmt and (re.search(is_not_pat, code_part) or re.search(is_pat, code_part)):
+            warnings.append(Issue(i, 1, 'PY008', 'Nie używaj "is" do porównań z literałami - użyj =='))
+            fixed_code = code_part
+            fixed_code = re.sub(is_not_pat, r'!= \1', fixed_code)
+            fixed_code = re.sub(is_pat, r'== \1', fixed_code)
+            if fixed_code != code_part:
+                fixes.append(Fix(i, 'Zamieniono "is" na == dla literałów', code_part.strip(), fixed_code.strip()))
+                fixed_lines[i - 1] = fixed_code + comment_part
+                current_line = fixed_lines[i - 1]
+                code_part, comment_part = _split_python_comment(current_line)
+                code_stripped = code_part.strip()
+                stripped = current_line.strip()
+     
     return AnalysisResult('python', code, '\n'.join(fixed_lines), errors, warnings, fixes)
 
 

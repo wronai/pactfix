@@ -50,10 +50,10 @@ test_project() {
     # Note: pactfix returns 1 if errors are detected, which is expected
     if [[ $RUN_TESTS -eq 1 ]]; then
         echo -e "${YELLOW}Running: pactfix --path ${project_path} --sandbox --test${NC}"
-        python -m pactfix --path "$project_path" --sandbox --test 2>&1 || true
+        python3 -m pactfix --path "$project_path" --sandbox --test 2>&1 || true
     else
         echo -e "${YELLOW}Running: pactfix --path ${project_path} --sandbox${NC}"
-        python -m pactfix --path "$project_path" --sandbox 2>&1 || true
+        python3 -m pactfix --path "$project_path" --sandbox 2>&1 || true
     fi
     
     # Check if sandbox was created
@@ -81,17 +81,17 @@ test_project() {
         
         # Check report for fixes
         if [[ -f "${project_path}/.pactfix/report.json" ]]; then
-            fixes=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_fixes', 0))" 2>/dev/null || echo "0")
-            errors=$(python -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_errors', 0))" 2>/dev/null || echo "0")
+            fixes=$(python3 -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_fixes', 0))" 2>/dev/null || echo "0")
+            errors=$(python3 -c "import json; r=json.load(open('${project_path}/.pactfix/report.json')); print(r.get('total_errors', 0))" 2>/dev/null || echo "0")
             echo -e "   📊 Errors detected: ${errors}, Fixes applied: ${fixes}"
         fi
 
         # Validate sandbox execution status
         local status_file="${project_path}/.pactfix/sandbox_status.json"
         if [[ -f "$status_file" ]]; then
-            build_ok=$(python -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('build_success'))))" 2>/dev/null || echo "0")
-            run_ok=$(python -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('run_success'))))" 2>/dev/null || echo "0")
-            test_ok=$(python -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('test_success'))))" 2>/dev/null || echo "0")
+            build_ok=$(python3 -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('build_success'))))" 2>/dev/null || echo "0")
+            run_ok=$(python3 -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('run_success'))))" 2>/dev/null || echo "0")
+            test_ok=$(python3 -c "import json; s=json.load(open('${project_path}/.pactfix/sandbox_status.json')); print(int(bool(s.get('test_success'))))" 2>/dev/null || echo "0")
 
             if [[ "$build_ok" != "1" ]]; then
                 echo -e "   ${RED}✗${NC} Docker build failed"

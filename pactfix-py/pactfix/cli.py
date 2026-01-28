@@ -453,7 +453,7 @@ def process_project(project_path: str, comment: bool = False, sandbox: bool = Fa
     files_to_process.extend(path.rglob('Makefile'))
     
     # Filter out hidden directories and common excludes
-    exclude_dirs = {'.git', '.pactfix', 'node_modules', '__pycache__', 'venv', '.venv', 
+    exclude_dirs = {'.git', '.pactfix', '_fixtures', 'node_modules', '__pycache__', 'venv', '.venv', 
                     'vendor', 'target', 'build', 'dist', '.idea', '.vscode'}
     
     files_to_process = [

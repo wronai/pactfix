@@ -147,6 +147,26 @@ class TestPythonAnalysis:
         result = analyze_python("def foo(x=[]):\n    pass")
         assert any(w.code == 'PY003' for w in result.warnings)
 
+    def test_none_comparison_autofix(self):
+        result = analyze_python("def f(x):\n    if x == None:\n        return 1\n    if x != None:\n        return 2")
+        assert any(w.code == 'PY004' for w in result.warnings)
+        assert any(f.description.startswith('Zmieniono porównanie do None') for f in result.fixes)
+        assert 'if x is None:' in result.fixed_code
+        assert 'if x is not None:' in result.fixed_code
+
+    def test_type_equals_autofix(self):
+        result = analyze_python("def f(obj):\n    if type(obj) == list:\n        return 1")
+        assert any(w.code == 'PY007' for w in result.warnings)
+        assert any('type(x) == T' in f.description for f in result.fixes)
+        assert 'if isinstance(obj, list):' in result.fixed_code
+
+    def test_is_literal_autofix(self):
+        result = analyze_python("def f(a, b):\n    if a is \"test\":\n        return True\n    if b is 100:\n        return True")
+        assert any(w.code == 'PY008' for w in result.warnings)
+        assert any('Zamieniono "is" na == ' in f.description for f in result.fixes)
+        assert 'if a == "test":' in result.fixed_code
+        assert 'if b == 100:' in result.fixed_code
+
 
 class TestDockerfileAnalysis:
     def test_latest_tag(self):
