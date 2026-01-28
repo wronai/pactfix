@@ -19,51 +19,47 @@ FAILED=0
 RESULTS=()
 RUN_TESTS=0
 
+WORK_ROOT="$(mktemp -d)"
+trap 'rm -rf "${WORK_ROOT}"' EXIT
+
 if [[ "${1:-}" == "--test" ]]; then
     RUN_TESTS=1
 fi
 
-cleanup_sandbox() {
-    local project_path="$1"
-    rm -rf "${project_path}/.pactfix" 2>/dev/null || true
-}
+prepare_work_project() {
+    local src_project_path="$1"
+    local project_name="$2"
 
-restore_fixture() {
-    local project_path="$1"
-    local fixture_dir="${project_path}/_fixtures/faulty"
-
+    local fixture_dir="${src_project_path}/_fixtures/faulty"
     if [[ ! -d "$fixture_dir" ]]; then
         echo -e "${RED}❌ Missing fixture directory: ${fixture_dir}${NC}"
         return 1
     fi
 
-    # Remove everything except _fixtures
-    find "$project_path" -mindepth 1 -maxdepth 1 ! -name "_fixtures" -exec rm -rf {} +
+    local work_project_path="${WORK_ROOT}/${project_name}"
+    mkdir -p "$work_project_path"
+    cp -a "${fixture_dir}/." "$work_project_path/"
 
-    # Restore fixture contents
-    cp -a "${fixture_dir}/." "$project_path/"
+    echo "$work_project_path"
 }
 
 test_project() {
     local project_name="$1"
-    local project_path="${TEST_PROJECTS_DIR}/${project_name}"
+    local src_project_path="${TEST_PROJECTS_DIR}/${project_name}"
     
     echo -e "\n${BLUE}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${BLUE}Testing: ${project_name}${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
     
-    if [[ ! -d "$project_path" ]]; then
-        echo -e "${RED}❌ Project directory not found: ${project_path}${NC}"
+    if [[ ! -d "$src_project_path" ]]; then
+        echo -e "${RED}❌ Project directory not found: ${src_project_path}${NC}"
         FAILED=$((FAILED + 1))
         RESULTS+=("❌ ${project_name}: Directory not found")
         return 1
     fi
-    
-    # Cleanup previous sandbox
-    cleanup_sandbox "$project_path"
 
-    # Restore faulty fixture to make tests deterministic
-    restore_fixture "$project_path"
+    local project_path
+    project_path="$(prepare_work_project "$src_project_path" "$project_name")"
     
     # Run pactfix with sandbox
     # Note: pactfix returns 1 if errors are detected, which is expected
@@ -195,9 +191,7 @@ echo -e "\n${GREEN}Passed: ${PASSED}${NC} | ${RED}Failed: ${FAILED}${NC}"
 
 # Cleanup all sandboxes
 echo -e "\n${YELLOW}Cleaning up sandboxes...${NC}"
-for project in "${PROJECTS[@]}"; do
-    cleanup_sandbox "${TEST_PROJECTS_DIR}/${project}"
-done
+rm -rf "${WORK_ROOT}" 2>/dev/null || true
 echo -e "${GREEN}Done${NC}"
 
 # Exit with appropriate code

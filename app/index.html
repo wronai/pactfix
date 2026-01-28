@@ -844,6 +844,27 @@
                     <p>Historia zmian pojawi się tutaj po analizie kodu.</p>
                 </div>
             </div>
+
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // State
+        let history = [];
+        let debounceTimer = null;
+        let shareDebounceTimer = null;
+        let lastAnalysis = null;
+        let currentMode = 'code';
+        let outputView = 'code';
+        let currentSnippetId = null;
+        let isLoadingFromHash = false;
+
+        // Elements
+        const codeInput = document.getElementById('codeInput');
+        const codeOutput = document.getElementById('codeOutput');
+        const inputLineNumbers = document.getElementById('inputLineNumbers');
         const outputLineNumbers = document.getElementById('outputLineNumbers');
         const historyContent = document.getElementById('historyContent');
         const inputTitleText = document.getElementById('inputTitleText');
@@ -942,12 +963,12 @@
         function setHashId(id) {
             if (!id) return;
             const next = `${window.location.pathname}${window.location.search}#${id}`;
-            history.replaceState(null, '', next);
+            window.history.replaceState(null, '', next);
         }
 
         function clearHashId() {
             const next = `${window.location.pathname}${window.location.search}`;
-            history.replaceState(null, '', next);
+            window.history.replaceState(null, '', next);
         }
 
         function scheduleShareUpdate() {
