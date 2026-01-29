@@ -40,6 +40,12 @@ class TestLanguageDetection:
         assert detect_language("x", "test.py") == 'python'
         assert detect_language("x", "app.tf") == 'terraform'
 
+    def test_detect_gitlab_ci_by_filename(self):
+        assert detect_language("stages:\n  - build\nbuild:\n  script:\n    - echo hi", ".gitlab-ci.yml") == 'gitlab-ci'
+
+    def test_detect_jenkinsfile_by_filename(self):
+        assert detect_language("pipeline { stages { stage('Build') { steps { echo 'hi' } } } }", "Jenkinsfile") == 'jenkinsfile'
+
 
 class TestBashAnalysis:
     def test_cd_without_error_handling(self):

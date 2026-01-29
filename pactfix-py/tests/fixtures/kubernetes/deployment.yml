@@ -1,0 +1,56 @@
+# Kubernetes Deployment with security issues
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+      - name: web
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        # No resource limits
+        # No probes defined
+        env:
+        - name: DATABASE_PASSWORD
+          value: "supersecret123"
+        - name: API_KEY
+          value: "sk-abcdef123456"
+      - name: sidecar
+        image: redis
+        # Privileged container - very dangerous
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        volumeMounts:
+        - name: host-logs
+          mountPath: /var/log/host
+      volumes:
+      - name: host-logs
+        hostPath:
+          path: /var/log
+          type: Directory
+---
+# Pod with missing security context
+apiVersion: v1
+kind: Pod
+metadata:
+  name: worker-pod
+spec:
+  containers:
+  - name: worker
+    image: python:latest
+    command: ["python", "app.py"]
+    # Missing resource limits
+    # Missing probes
+    # Missing security context

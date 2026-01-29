@@ -35,6 +35,7 @@ def analyze_gitlab_ci(code: str) -> AnalysisResult:
             if ':latest' in img or img.endswith('latest') or ':' not in img:
                 warnings.append(Issue(i, 1, 'GL003', 'Użyj konkretnej wersji image zamiast latest/braku tagu'))
                 replacement = img
+                indent = re.match(r'^\s*', current).group(0)
                 if img.startswith('alpine'):
                     replacement = 'alpine:3.19'
                 elif img.startswith('python'):
@@ -48,7 +49,7 @@ def analyze_gitlab_ci(code: str) -> AnalysisResult:
                         replacement = img[: -len('latest')] + '1.0.0'
                     elif ':' not in img:
                         replacement = img + ':1.0.0'
-                fixed = re.sub(r'^\s*image\s*:\s*[^\s#]+', f"image: {replacement}", current)
+                fixed = f"{indent}image: {replacement}"
                 fixes.append(Fix(i, 'Zmieniono image na wersjonowany tag', current.rstrip(), fixed.rstrip()))
                 fixed_lines[i - 1] = fixed
 

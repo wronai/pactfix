@@ -18,6 +18,9 @@ from .ini_generic import analyze_ini
 from .helm import analyze_helm
 from .gitlab_ci import analyze_gitlab_ci
 from .jenkinsfile import analyze_jenkinsfile
+from .docker_compose import analyze_docker_compose
+from .kubernetes import analyze_kubernetes
+from .terraform import analyze_terraform
 
 __all__ = [
     'analyze_typescript',
@@ -38,4 +41,7 @@ __all__ = [
     'analyze_helm',
     'analyze_gitlab_ci',
     'analyze_jenkinsfile',
+    'analyze_docker_compose',
+    'analyze_kubernetes',
+    'analyze_terraform',
 ]

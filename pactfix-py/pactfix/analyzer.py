@@ -74,6 +74,8 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'nginx'
         if fn_lower.endswith(('.yml', '.yaml')) and ('workflow' in fn_lower or '.github' in fn_lower):
             return 'github-actions'
+        if fn_name in ('.gitlab-ci.yml', '.gitlab-ci.yaml'):
+            return 'gitlab-ci'
         if any(x in fn_lower for x in ['playbook', 'ansible']):
             return 'ansible'
         if fn_name in ('chart.yaml', 'chart.yml', 'values.yaml', 'values.yml'):
@@ -82,8 +84,6 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'helm'
         if fn_lower.endswith(('.tpl', '.gotmpl')):
             return 'helm'
-        if fn_lower.endswith(('.yml', '.yaml')):
-            return 'yaml'
         if fn_lower.endswith('.py'):
             return 'python'
         if fn_lower.endswith('.php'):
@@ -122,10 +122,22 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'apache'
         if fn_lower.endswith('.service') or fn_lower.endswith('.timer'):
             return 'systemd'
-        if fn_name in ('.gitlab-ci.yml', '.gitlab-ci.yaml'):
-            return 'gitlab-ci'
         if fn_name == 'jenkinsfile':
             return 'jenkinsfile'
+        if fn_lower.endswith(('.yml', '.yaml')):
+            # Check for specific YAML types first
+            if 'workflow' in fn_lower or '.github' in fn_lower:
+                return 'github-actions'
+            if fn_name in ('.gitlab-ci.yml', '.gitlab-ci.yaml'):
+                return 'gitlab-ci'
+            if fn_name in ('chart.yaml', 'chart.yml', 'values.yaml', 'values.yml'):
+                return 'helm'
+            if '/templates/' in fn_lower:
+                return 'helm'
+            # Check for Kubernetes patterns in filename
+            if any(x in fn_lower for x in ['deployment', 'service', 'configmap', 'secret', 'ingress', 'statefulset', 'daemonset', 'cronjob']):
+                return 'kubernetes'
+            return 'yaml'
 
     # Content-based detection
     if any(line.strip().upper().startswith(('FROM ', 'RUN ', 'COPY ', 'ENTRYPOINT ')) for line in lines[:20]):
@@ -865,6 +877,14 @@ def analyze_dockerfile(code: str) -> AnalysisResult:
 
 def analyze_docker_compose(code: str) -> AnalysisResult:
     """Analyze docker-compose.yml."""
+    # Delegate to new modular analyzer
+    if NEW_ANALYZERS_AVAILABLE:
+        try:
+            from .analyzers.docker_compose import analyze_docker_compose as new_analyze_dc
+            return new_analyze_dc(code)
+        except Exception:
+            pass
+    # Fallback to minimal legacy implementation below
     errors, warnings, fixes = [], [], []
     lines = code.split('\n')
     
@@ -955,6 +975,14 @@ def analyze_sql(code: str) -> AnalysisResult:
 
 def analyze_terraform(code: str) -> AnalysisResult:
     """Analyze Terraform."""
+    # Delegate to new modular analyzer
+    if NEW_ANALYZERS_AVAILABLE:
+        try:
+            from .analyzers.terraform import analyze_terraform as new_analyze_tf
+            return new_analyze_tf(code)
+        except Exception:
+            pass
+    # Fallback to minimal legacy implementation below
     errors, warnings, fixes = [], [], []
     lines = code.split('\n')
     
@@ -1003,6 +1031,14 @@ def analyze_terraform(code: str) -> AnalysisResult:
 
 def analyze_kubernetes(code: str) -> AnalysisResult:
     """Analyze Kubernetes YAML."""
+    # Delegate to new modular analyzer
+    if NEW_ANALYZERS_AVAILABLE:
+        try:
+            from .analyzers.kubernetes import analyze_kubernetes as new_analyze_k8s
+            return new_analyze_k8s(code)
+        except Exception:
+            pass
+    # Fallback to minimal legacy implementation below
     errors, warnings, fixes = [], [], []
     lines = code.split('\n')
     
@@ -1285,6 +1321,9 @@ try:
     from .analyzers.helm import analyze_helm
     from .analyzers.gitlab_ci import analyze_gitlab_ci
     from .analyzers.jenkinsfile import analyze_jenkinsfile
+    from .analyzers.docker_compose import analyze_docker_compose
+    from .analyzers.kubernetes import analyze_kubernetes
+    from .analyzers.terraform import analyze_terraform
     from .analyzers.json_generic import analyze_json
     from .analyzers.toml_generic import analyze_toml
     from .analyzers.ini_generic import analyze_ini

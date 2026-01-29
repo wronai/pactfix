@@ -55,20 +55,7 @@ publish: bump-patch build-pactfix
 	cd $(PACTFIX_DIR) && python -m twine upload dist/*
 
 push:
-	@git add -A && \
-	if git diff --cached --quiet; then \
-		echo "No changes to commit."; \
-	else \
-		msg=$$(python3 scripts/git_commit_helper.py); \
-		if [ -n "$$msg" ]; then \
-			git commit -m "$$msg"; \
-			version=$$(cat VERSION); \
-			git tag -a "v$$version" -m "Release $$version"; \
-			git push origin main --tags; \
-		else \
-			echo "Aborting commit due to empty commit message."; \
-		fi; \
-	fi
+	goal push
 
 build:
 	docker build -t pactown-debug .
