@@ -140,6 +140,18 @@ COPY . .
 CMD ["sh", "-c", "echo 'INI sandbox ready'"]
 ''',
 
+    'gitlab-ci': '''FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+CMD ["sh", "-c", "echo 'GitLab CI sandbox ready'"]
+''',
+
+    'jenkinsfile': '''FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+CMD ["sh", "-c", "echo 'Jenkinsfile sandbox ready'"]
+''',
+
     'generic': '''FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y build-essential git curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -232,13 +244,25 @@ def detect_project_language(project_path: Path) -> Tuple[str, Dict]:
             'files': ['setup.cfg', 'tox.ini'],
             'extensions': ['.ini', '.cfg'],
             'weight': 0
+        },
+        'gitlab-ci': {
+            'files': ['.gitlab-ci.yml', '.gitlab-ci.yaml'],
+            'extensions': [],
+            'weight': 0
+        },
+        'jenkinsfile': {
+            'files': ['Jenkinsfile'],
+            'extensions': [],
+            'weight': 0
         }
     }
     
     file_counts = {}
     
+    allow_hidden_files = {'.gitlab-ci.yml', '.gitlab-ci.yaml'}
+
     for item in project_path.rglob('*'):
-        if item.is_file() and '_fixtures' not in item.parts and not any(p.startswith('.') for p in item.parts):
+        if item.is_file() and '_fixtures' not in item.parts and (not any(p.startswith('.') for p in item.parts) or item.name.lower() in allow_hidden_files):
             ext = item.suffix.lower()
             name = item.name.lower()
             
@@ -500,6 +524,8 @@ dist
             'json': "python -c \"import glob,json; paths=glob.glob('**/*.json', recursive=True); [json.load(open(p, 'r', encoding='utf-8', errors='ignore')) for p in paths]; print('JSON OK', len(paths))\"",
             'toml': "python -c \"import glob,tomllib; paths=glob.glob('**/*.toml', recursive=True); [tomllib.load(open(p, 'rb')) for p in paths]; print('TOML OK', len(paths))\"",
             'ini': "python -c \"import glob,configparser; paths=glob.glob('**/*.ini', recursive=True)+glob.glob('**/*.cfg', recursive=True); c=configparser.ConfigParser(); [c.read(p, encoding='utf-8') for p in paths]; print('INI OK', len(paths))\"",
+            'gitlab-ci': "python -c \"p=open('.gitlab-ci.yml','r',encoding='utf-8',errors='ignore').read(); assert '\\t' not in p; assert all(not ln.endswith(' ') for ln in p.splitlines()); assert 'python:latest' not in p and 'python:3.11' in p; print('GITLAB CI OK')\"",
+            'jenkinsfile': "python -c \"p=open('Jenkinsfile','r',encoding='utf-8',errors='ignore').read(); assert '\\t' not in p; assert all(not ln.endswith(' ') for ln in p.splitlines()); assert ':latest' not in p; assert '| bash' not in p; print('JENKINSFILE OK')\"",
         }
         
         cmd = test_commands.get(self.language, 'echo "No test command for this language"')
