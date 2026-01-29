@@ -1,3 +1,13 @@
+## [1.0.4] - 2026-01-29
+
+### Summary
+
+refactor(core): cleaner code architecture
+
+### Changes
+
+- update playwright.config.ts
+
 ## [1.0.3] - 2026-01-29
 
 ### Summary

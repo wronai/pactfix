@@ -20,7 +20,6 @@ export default defineConfig({
       use: { 
         ...devices['Desktop Chrome'],
         launchOptions: {
-          executablePath: '/snap/bin/chromium',
           args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
         }
       },
