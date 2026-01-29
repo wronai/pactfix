@@ -1,23 +1,103 @@
-## [1.0.2] - 2026-01-29
+## [1.0.3] - 2026-01-29
 
 ### Summary
 
-fix(core): resolve Changelog, [Unreleased], Added and 7 more
+docs(docs): document Changelog, [1.2.0] - 2026-01-29, Added and 7 more
 
 ### Changes
 
-- build: update Makefile
-- config: update goal.yaml
-- docs: update EXAMPLES.md
-- docs: update QUICK_REFERENCE.md
 - docs: update README
-- update pactfix-py/pactfix/analyzer.py
-- update pactfix-py/pactfix/analyzers/__init__.py
-- update pactfix-py/pactfix/analyzers/docker_compose.py
-- update pactfix-py/pactfix/analyzers/gitlab_ci.py
-- update pactfix-py/pactfix/analyzers/kubernetes.py
-- update pactfix-py/pactfix/analyzers/terraform.py
-- config: update deployment.yml
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.2.0] - 2026-01-29
+
+### Added
+- GitLab CI support with dedicated analyzer
+- Jenkinsfile support for pipeline analysis
+- Enhanced language detection for YAML files
+- Better error messages and fix explanations
+- Comprehensive documentation with examples
+- Test coverage badges and GitHub stats
+- Interactive table of contents in README
+- Multi-language support status table
+
+### Fixed
+- Quote positioning detection in bash command substitutions (SC1073)
+- Missing fix comments for bash analysis
+- Python test import issues (pytest configuration)
+- E2E test stability improvements
+- Stats not updating when typing code
+- Example code loading issues
+- Clear input functionality
+
+### Improved
+- API documentation with all endpoints (/api/analyze, /api/health, /api/snippet)
+- Development setup instructions
+- Project structure documentation
+- Docker sandbox testing documentation
+
+## [1.1.0] - 2026-01-28
+
+### Added
+- Real-time code analysis with debouncing
+- History tracking for all fixes
+- Export functionality (download/copy)
+- Share via URL feature
+- Statistics display (lines, chars, errors, warnings)
+- Multi-language support for 20+ formats
+- Docker sandbox testing
+- Pactfix CLI integration
+
+### Fixed
+- Initial UI responsiveness issues
+- Basic syntax highlighting
+
+## [1.0.0] - 2026-01-20
+
+### Added
+- Initial release
+- Basic bash/shell analysis
+- ShellCheck integration
+- Web-based UI
+- Docker support
+- API endpoints for analysis
+
+---
+
+## How to Update
+
+### From Docker
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+### From Source
+```bash
+git pull origin main
+pip install -r requirements.txt
+python3 server.py
+```
+
+---
+
+## Migration Guide
+
+### v1.0.x → v1.1.x
+- No breaking changes
+- New features are opt-in
+- Existing API endpoints remain compatible
+
+### v1.1.x → v1.2.x
+- Enhanced language detection may identify files differently
+- New analyzers for GitLab CI and Jenkinsfile
+- Test structure updated (pytest.ini modified)
 - update pactfix-py/tests/fixtures/terraform/main.tf
 - update pactfix-py/tests/test_analyzer.py
 - update playwright-report/index.html
