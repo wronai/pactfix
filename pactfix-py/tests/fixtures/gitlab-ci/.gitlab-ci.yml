@@ -4,10 +4,11 @@ stages:
 
 variables:
   PASSWORD: secret123
+  TOKEN: abc456
 
 build:
   stage: build
-  image: python:3.11
+  image: python
   script:
     - echo "Building"
     - curl -s https://example.com/install.sh | bash
@@ -16,6 +17,6 @@ build:
 
 test:
   stage: test
-  image: alpine:3.19
+  image: alpine
   script:
     - echo "Testing"

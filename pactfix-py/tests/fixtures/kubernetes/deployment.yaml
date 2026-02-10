@@ -1,9 +1,7 @@
-# Kubernetes Error Fixture - 10+ different error types
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: web-app
-  # K8S007: Using default namespace
   namespace: default
 spec:
   replicas: 3
@@ -17,87 +15,18 @@ spec:
     spec:
       containers:
       - name: web
-        # K8S004: Using :latest tag
-        image: nginx:1.25
-        # K8S004: No tag at all
-        # image: nginx
+        image: nginx:latest
         ports:
         - containerPort: 80
         env:
-        # K8S006: Hardcoded secrets
         - name: DATABASE_PASSWORD
-        resources:
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          limits:
-            cpu: 500m
-            memory: 512Mi
-          requests:
-            cpu: 250m
-            memory: 256Mi
           value: "secret123"
         - name: API_KEY
           value: "sk-abcdef123456"
-        - name: SECRET_TOKEN
-          value: "bearer_xyz"
-        # K8S001: Privileged container
         securityContext:
-          # privileged: true - REMOVED
-          # K8S002: Running as root
+          privileged: true
           runAsUser: 0
-        # K8S008: Missing resource limits
-        # K8S009: Missing probes
-      # K8S003: Using hostPath
       volumes:
       - name: data
         hostPath:
           path: /data
-      - name: config
-        hostPath:
-          path: /etc/app
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: insecure-pod
-  namespace: default
-spec:
-  containers:
-  - name: app
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 2000
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 2000
-    image: myapp
-    securityContext:
-      privileged: true
-      runAsUser: 0
-  # No securityContext at pod level (K8S010)
-  # No resource limits (K8S008)
-  # No probes (K8S009)
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: web-service
-spec:
-  selector:
-    app: web
-  ports:
-  - port: 80
-    targetPort: 80
-  type: LoadBalancer
