@@ -88,21 +88,21 @@ _BASH_BRACE_SHOULD_CHANGE_TEMPLATES = [
 
 def _gen_bash_brace_cases() -> list[str]:
     templates = [
-        'echo ${VAR}',
-        'echo "${VAR}"',
-        'printf "%s" ${VAR}',
-        'rm -v ${VAR}',
-        'test -f ${VAR}/${HOST}',
-        'cat ${VAR}/${HOST}',
-        'scp ${VAR} user@${HOST}:/tmp/',
-        'cmd --out=${VAR}',
-        'echo pre${VAR}/post',
-        'echo user@${HOST}:${VAR}',
+        'echo $VAR',
+        'echo "$VAR"',
+        'printf "%s" $VAR',
+        'rm -v $VAR',
+        'test -f $VAR/$HOST',
+        'cat $VAR/$HOST',
+        'scp $VAR user@$HOST:/tmp/',
+        'cmd --out=$VAR',
+        'echo pre$VAR/post',
+        'echo user@$HOST:$VAR',
     ]
     cases = []
     for var in _BASH_BRACE_VAR_NAMES:
         for tpl in templates:
-            line = tpl.replace('${VAR}', f'${var}').replace('${HOST}', '$HOST')
+            line = tpl.replace('$VAR', f'${var}').replace('$HOST', '$HOST')
             cases.append(line)
     return cases
 
