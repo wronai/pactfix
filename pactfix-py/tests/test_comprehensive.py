@@ -82,6 +82,7 @@ EXPECTED_ISSUES = {
     'helm': 4,
     'gitlab-ci': 4,
     'jenkinsfile': 4,
+    'markdown': 3,
 }
 
 # Fixture file mappings
@@ -116,6 +117,7 @@ FIXTURE_FILES = {
     'helm': 'helm/values.yaml',
     'gitlab-ci': 'gitlab-ci/.gitlab-ci.yml',
     'jenkinsfile': 'jenkinsfile/Jenkinsfile',
+    'markdown': 'markdown/errors.md',
 }
 
 

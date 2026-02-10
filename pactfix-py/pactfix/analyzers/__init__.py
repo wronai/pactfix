@@ -30,6 +30,8 @@ from .jenkinsfile import analyze_jenkinsfile
 from .docker_compose import analyze_docker_compose
 from .kubernetes import analyze_kubernetes
 from .terraform import analyze_terraform
+from .markdown import analyze_markdown
+from .markpact import analyze_markpact
 
 __all__ = [
     'analyze_bash',
@@ -62,4 +64,6 @@ __all__ = [
     'analyze_docker_compose',
     'analyze_kubernetes',
     'analyze_terraform',
+    'analyze_markdown',
+    'analyze_markpact',
 ]

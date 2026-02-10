@@ -12,7 +12,7 @@ SUPPORTED_LANGUAGES = [
     'typescript', 'go', 'rust', 'java', 'csharp', 'ruby',
     'makefile', 'yaml', 'apache', 'systemd', 'html', 'css',
     'json', 'toml', 'ini',
-    'helm', 'gitlab-ci', 'jenkinsfile']
+    'helm', 'gitlab-ci', 'jenkinsfile', 'markdown', 'markpact']
 
 @dataclass
 class Issue:
@@ -121,6 +121,10 @@ def detect_language(code: str, filename: str = None) -> str:
             return 'apache'
         if fn_lower.endswith('.service') or fn_lower.endswith('.timer'):
             return 'systemd'
+        if fn_lower.endswith('.md') or fn_lower.endswith('.markdown') or fn_lower.endswith('.mdx'):
+            if 'markpact:' in code:
+                return 'markpact'
+            return 'markdown'
         if fn_name == 'jenkinsfile':
             return 'jenkinsfile'
         if fn_lower.endswith(('.yml', '.yaml')):
@@ -412,6 +416,8 @@ from .analyzers import (
     analyze_docker_compose,
     analyze_kubernetes,
     analyze_terraform,
+    analyze_markdown,
+    analyze_markpact,
 )
 
 
@@ -451,6 +457,8 @@ def analyze_code(code: str, filename: str = None, force_language: str = None) ->
         'json': analyze_json,
         'toml': analyze_toml,
         'ini': analyze_ini,
+        'markdown': analyze_markdown,
+        'markpact': analyze_markpact,
     }
 
     analyzer = analyzers.get(language, analyze_bash)
