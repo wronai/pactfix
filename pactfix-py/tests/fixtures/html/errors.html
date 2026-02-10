@@ -1,8 +1,10 @@
+<!DOCTYPE html>
 <!-- HTML Error Fixture - 15 different error types -->
 
 <!-- HTML001: Missing DOCTYPE -->
-<html>
+<html lang="en">
 <!-- HTML002: Missing lang attribute -->
+    <meta charset="utf-8">
 <head>
     <!-- HTML003: Missing charset (no meta charset) -->
     <!-- HTML004: Missing viewport meta -->
@@ -11,8 +13,8 @@
 </head>
 <body>
     <!-- HTML006: img without alt -->
-    <img src="logo.png">
-    <img src="banner.jpg" width="100">
+    <img alt="" src="logo.png">
+    <img alt="" src="banner.jpg" width="100">
     
     <!-- HTML007: Inline styles -->
     <div style="color: red; font-size: 14px;">Styled text</div>
@@ -35,8 +37,8 @@
         <input type="submit" value="Login">
     </form>
     
-    <!-- HTML012: target="_blank" without rel -->
-    <a href="https://example.com" target="_blank">External link</a>
+    <!-- HTML012: target="_blank" rel="noopener noreferrer" without rel -->
+    <a href="https://example.com" target="_blank" rel="noopener noreferrer">External link</a>
     
     <!-- HTML013: HTTP links -->
     <a href="http://insecure-site.com">Insecure link</a>

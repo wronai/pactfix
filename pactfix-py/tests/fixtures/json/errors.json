@@ -1,16 +1,14 @@
 {
   "name": "app",
-  "enabled": True,
-  "disabled": False,
-  "nothing": None,
+  "enabled": true,
+  "disabled": false,
+  "nothing": null,
   "items": [
     1,
     2,
-    3,
-  ],
+    3],
   "config": {
     "timeout": 30,
     "timeout": 60,
-    "message": "Error: Something happened",
-  }
+    "message": "Error: Something happened"}
 }

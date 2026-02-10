@@ -39,9 +39,9 @@ h1 {
 
 /* CSS006: Zero values with units */
 .container {
-    margin: 0px;
-    padding: 0rem;
-    border-width: 0em;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
 }
 
 /* CSS007: Universal selector */

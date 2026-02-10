@@ -6,16 +6,16 @@ variables:
   PASSWORD: secret123
 
 build:
-	stage: build
-	image: python:latest
-	script:
-	  - echo "Building"
-	  - curl -s https://example.com/install.sh | bash
-	only:
-	  - master
+  stage: build
+  image: python:3.11
+  script:
+    - echo "Building"
+    - curl -s https://example.com/install.sh | bash
+  only:
+    - master
 
 test:
   stage: test
-  image: alpine
+  image: alpine:3.19
   script:
-    - echo "Testing"   
+    - echo "Testing"

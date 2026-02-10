@@ -2,7 +2,7 @@
 
 # MAKE001: Spaces instead of tabs (intentional error - using spaces)
 all:
-    echo "Building..."
+	echo "Building..."
 
 # MAKE003: Missing .PHONY for standard targets
 build:
@@ -30,8 +30,8 @@ NAME := $(shell cat name.txt)
 
 # MAKE007: Recursive make without $(MAKE)
 submake:
-	make -C subdir
-	make clean
+	$(MAKE) -C subdir
+	$(MAKE) clean
 
 # MAKE011: rm without -f
 clean:

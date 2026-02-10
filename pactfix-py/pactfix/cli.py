@@ -14,6 +14,7 @@ try:
 except ImportError:
     pass  # python-dotenv not installed, use system environment only
 
+from . import __version__
 from .analyzer import analyze_code, detect_language, SUPPORTED_LANGUAGES, add_fix_comments
 from .sandbox import Sandbox, detect_project_language, create_all_dockerfiles, LANGUAGE_DOCKERFILES
 
@@ -33,7 +34,7 @@ def main():
     parser.add_argument('--batch', help='Process all files in directory')
     parser.add_argument('--fix-all', action='store_true', help='Fix all files in examples/')
     parser.add_argument('--json', action='store_true', help='Output as JSON')
-    parser.add_argument('--version', action='version', version='pactfix 1.0.0')
+    parser.add_argument('--version', action='version', version=f'pactfix {__version__}')
     
     # New options for project scanning and sandbox
     parser.add_argument('--path', help='Project path to scan and fix all files')

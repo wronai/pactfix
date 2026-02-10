@@ -7,8 +7,8 @@ terraform {
 provider "aws" {
   region = "us-east-1"
   # Missing version constraint
-  access_key = "AKIAIOSFODNN7EXAMPLE"
-  secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  access_key = var.access_key_var
+  secret_key = var.secret_key_var
 }
 
 resource "aws_instance" "web" {
@@ -31,7 +31,7 @@ resource "aws_security_group" "web" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Too open
+    cidr_blocks = ["10.0.0.0/8"]  # Too open
   }
   
   egress {
@@ -46,7 +46,7 @@ resource "aws_s3_bucket" "logs" {
   bucket = "my-app-logs-bucket"
   
   # Public ACL - very bad!
-  acl = "public-read"
+  acl = "private"
   
   # No encryption
 }
@@ -57,7 +57,7 @@ resource "aws_rds_instance" "db" {
   instance_class = "db.t2.micro"
   
   username = "admin"
-  password = "SuperSecretPassword123!"  # Hardcoded password
+  password = var.aws_rds_instance_db_password  # Hardcoded password
   
   storage_encrypted = false  # Encryption disabled
   
@@ -72,4 +72,30 @@ resource "aws_eip" "web" {
   tags = {
     Name = var.undefined_var  # This variable is not defined
   }
+}
+
+variable "access_key_var" {
+  description = "access_key for general"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "secret_key_var" {
+  description = "secret_key for general"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "aws_rds_instance_db_password" {
+  description = "password for aws_rds_instance"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "undefined_var" {
+  description = "TODO: Add description"
+  type        = string
 }

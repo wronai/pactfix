@@ -18,7 +18,7 @@ spec:
       containers:
       - name: web
         # K8S004: Using :latest tag
-        image: nginx:latest
+        image: nginx:1.25
         # K8S004: No tag at all
         # image: nginx
         ports:
@@ -26,6 +26,25 @@ spec:
         env:
         # K8S006: Hardcoded secrets
         - name: DATABASE_PASSWORD
+        resources:
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 256Mi
           value: "secret123"
         - name: API_KEY
           value: "sk-abcdef123456"
@@ -33,7 +52,7 @@ spec:
           value: "bearer_xyz"
         # K8S001: Privileged container
         securityContext:
-          privileged: true
+          # privileged: true - REMOVED
           # K8S002: Running as root
           runAsUser: 0
         # K8S008: Missing resource limits
@@ -55,6 +74,14 @@ metadata:
 spec:
   containers:
   - name: app
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
     image: myapp
     securityContext:
       privileged: true

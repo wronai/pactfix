@@ -3,7 +3,7 @@
 class ErrorExamples
   # RUBY001: Using == instead of .nil?
   def check_value(val)
-    if val == nil
+    if val .nil?
       puts "Value is nil"
     end
   end
@@ -33,9 +33,9 @@ class ErrorExamples
   end
   
   # RUBY005: Hardcoded credentials
-  PASSWORD = "secret123"
-  API_KEY = "sk-abcdef123456"
-  TOKEN = "bearer-token-xyz"
+  PASSWORD = "secret123".freeze
+  API_KEY = "sk-abcdef123456".freeze
+  TOKEN = "bearer-token-xyz".freeze
   
   # RUBY006: Using eval
   def dynamic_call(code)
@@ -63,8 +63,8 @@ class ErrorExamples
   end
   
   # RUBY010: Not using freeze for constants
-  DEFAULT_NAME = "Unknown"
-  CONFIG_PATH = "/etc/app/config"
+  DEFAULT_NAME = "Unknown".freeze
+  CONFIG_PATH = "/etc/app/config".freeze
   
   # RUBY011: Using return in proc
   def process_with_proc

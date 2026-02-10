@@ -1,5 +1,14 @@
 """Language-specific analyzers for pactfix."""
 
+from .bash import analyze_bash
+from .python_lang import analyze_python
+from .php import analyze_php
+from .javascript import analyze_javascript
+from .dockerfile import analyze_dockerfile
+from .sql import analyze_sql
+from .nginx import analyze_nginx
+from .github_actions import analyze_github_actions
+from .ansible import analyze_ansible
 from .typescript import analyze_typescript
 from .go import analyze_go
 from .rust import analyze_rust
@@ -23,6 +32,15 @@ from .kubernetes import analyze_kubernetes
 from .terraform import analyze_terraform
 
 __all__ = [
+    'analyze_bash',
+    'analyze_python',
+    'analyze_php',
+    'analyze_javascript',
+    'analyze_dockerfile',
+    'analyze_sql',
+    'analyze_nginx',
+    'analyze_github_actions',
+    'analyze_ansible',
     'analyze_typescript',
     'analyze_go',
     'analyze_rust',

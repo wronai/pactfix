@@ -1,6 +1,10 @@
 import re
-import yaml
 from typing import List, Dict, Any
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 from ..analyzer import Issue, Fix, AnalysisResult
 
@@ -12,6 +16,9 @@ def analyze_kubernetes(code: str) -> AnalysisResult:
 
     lines = code.splitlines()
     fixed_lines = lines.copy()
+
+    if yaml is None:
+        return AnalysisResult('kubernetes', code, code, [], [Issue(1, 1, 'K8S998', 'PyYAML not installed - install pactfix[yaml] for full analysis')], [])
 
     try:
         # Handle multi-document YAML

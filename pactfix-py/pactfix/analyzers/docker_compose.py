@@ -1,6 +1,10 @@
 import re
-import yaml
 from typing import List, Dict, Any
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 from ..analyzer import Issue, Fix, AnalysisResult
 
@@ -12,6 +16,10 @@ def analyze_docker_compose(code: str) -> AnalysisResult:
 
     lines = code.splitlines()
     fixed_lines = lines.copy()
+
+    if yaml is None:
+        # Fallback: return empty result when PyYAML not installed
+        return AnalysisResult('docker-compose', code, code, [], [Issue(1, 1, 'COMPOSE998', 'PyYAML not installed - install pactfix[yaml] for full analysis')], [])
 
     try:
         data = yaml.safe_load(code) or {}

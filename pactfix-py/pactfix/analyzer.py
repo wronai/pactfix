@@ -1350,13 +1350,13 @@ def analyze_code(code: str, filename: str = None, force_language: str = None) ->
         'nginx': analyze_nginx,
         'github-actions': analyze_github_actions,
         'ansible': analyze_ansible,
-        'gitlab-ci': analyze_gitlab_ci,
-        'jenkinsfile': analyze_jenkinsfile,
     }
     
     # Add new analyzers if available
     if NEW_ANALYZERS_AVAILABLE:
         analyzers.update({
+            'gitlab-ci': analyze_gitlab_ci,
+            'jenkinsfile': analyze_jenkinsfile,
             'typescript': analyze_typescript,
             'go': analyze_go,
             'rust': analyze_rust,

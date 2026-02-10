@@ -9,9 +9,9 @@ FROM python
 RUN apt-get install -y curl wget
 
 # DOCKER004: Using ADD instead of COPY for local files
-ADD ./app /app
-ADD config.json /config/
-ADD src/ /src/
+COPY ./app /app
+COPY config.json /config/
+COPY src/ /src/
 
 # DOCKER006: Shell form instead of exec form
 CMD python app.py
@@ -23,8 +23,8 @@ ENV API_KEY=sk-abcdef123456
 ENV DATABASE_PASSWORD=admin123
 
 # DOCKER008: WORKDIR with relative path
-WORKDIR app
-WORKDIR src/components
+WORKDIR /app
+WORKDIR /src/components
 
 # DOCKER009: Missing USER directive (running as root)
 

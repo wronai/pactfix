@@ -1,9 +1,9 @@
 // JavaScript Error Fixture - 10+ different error types
 
-// JS001: var usage
-var counter = 0;
-var name = "test";
-var items = [];
+// JS001: let usage
+let counter = 0;
+let name = "test";
+let items = [];
 
 // JS002: == instead of ===
 if (counter == 0) {
@@ -21,14 +21,14 @@ function calculate() {
 }
 
 // JS004: eval usage
-var result = eval("1 + 2");
-var code = eval(userInput);
+let result = eval("1 + 2");
+let code = eval(userInput);
 
 // Additional common errors:
 
 // Using arguments instead of rest parameters
 function oldStyle() {
-    var args = arguments;
+    let args = arguments;
     return Array.prototype.slice.call(arguments);
 }
 
@@ -55,14 +55,14 @@ function modify(obj) {
 }
 
 // Using for-in for arrays
-var arr = [1, 2, 3];
-for (var i in arr) {
+let arr = [1, 2, 3];
+for (let i in arr) {
     console.log(arr[i]);
 }
 
 // Hardcoded secrets
-var password = "secret123";
-var apiKey = "sk-abcdef123456";
+let password = "secret123";
+let apiKey = "sk-abcdef123456";
 const TOKEN = "bearer_xyz";
 
 // Using document.write

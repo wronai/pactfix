@@ -1,8 +1,18 @@
+replicaCount: 1
 image:
   repository: nginx
-  tag: latest
-  imagePullPolicy: Always
+  tag: "1.0.0"
+  imagePullPolicy: IfNotPresent
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 80
+
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"

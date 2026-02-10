@@ -10,9 +10,9 @@ DELETE FROM logs;
 DELETE FROM temp_data;
 
 -- SQL004: DROP without IF EXISTS
-DROP TABLE users;
-DROP TABLE orders;
-DROP INDEX idx_users_email;
+DROP IF EXISTS TABLE users;
+DROP IF EXISTS TABLE orders;
+DROP IF EXISTS INDEX idx_users_email;
 
 -- SQL005: CREATE without IF NOT EXISTS
 CREATE TABLE users (

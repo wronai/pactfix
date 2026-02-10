@@ -4,7 +4,7 @@ version: '3.8'
 services:
   web:
     # COMPOSE001: Using :latest tag
-    image: nginx:latest
+    image: nginx:1.25
     ports:
       - "80:80"
     # COMPOSE003: network_mode host
@@ -19,9 +19,9 @@ services:
   
   app:
     # COMPOSE001: No tag specified
-    image: myapp
+    image: myapp:1.0.0
     # COMPOSE002: Privileged container
-    privileged: true
+
     environment:
       - NODE_ENV=production
       - PASSWORD=hardcoded_password
@@ -29,7 +29,7 @@ services:
       - db
   
   db:
-    image: postgres:latest
+    image: postgres:1.0.0
     environment:
       # More hardcoded secrets
       POSTGRES_PASSWORD: admin123
@@ -38,18 +38,18 @@ services:
       - db_data:/var/lib/postgresql/data
   
   redis:
-    image: redis
+    image: redis:1.0.0
     # No resource limits
   
   worker:
-    image: worker:latest
+    image: worker:1.0.0
     # COMPOSE004: Mounting docker.sock
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    privileged: true
+
   
   monitor:
-    image: monitor
+    image: monitor:1.0.0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -59,3 +59,7 @@ volumes:
   db_data:
 
 # COMPOSE006: Multiple services without networks definition
+
+networks:
+  default:
+    driver: bridge

@@ -1,15 +1,15 @@
 # TOML Error Fixture
 
-	name = "app"   
-	version = "1.0.0" 
+  name = "app"
+  version = "1.0.0"
 
 [server]
 port = 8080
-host = "localhost"   
+host = "localhost"
 
 [database]
 user = "admin"
-password = "secret123"   
+password = "secret123"
 
 # Suspicious line (space in key)
 invalid key = "value"

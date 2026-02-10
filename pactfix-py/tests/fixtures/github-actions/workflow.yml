@@ -17,8 +17,8 @@ jobs:
     - uses: actions/checkout@v4
     
     # GHA001: Using @master instead of version/SHA
-    - uses: actions/setup-node@master
-    - uses: actions/setup-python@main
+    - uses: actions/setup-node@v4
+    - uses: actions/setup-python@v4
     
     # GHA003: Hardcoded secrets
     - name: Configure

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pactfix"
-version = "1.0.3"
+version = "1.0.5"
 description = "🔧 Multi-language code analyzer and auto-fixer with Docker sandbox support"
 
 [project.readme]
@@ -35,14 +35,23 @@ classifiers = [
     "Environment :: Console",
 ]
 keywords = ["linter", "code-analysis", "auto-fix", "bash", "python", "php", "javascript", "docker", "sql", "terraform", "kubernetes", "gitlab-ci", "jenkinsfile", "devops", "ci-cd"]
-dependencies = [
+dependencies = []
+
+[project.optional-dependencies]
+yaml = [
+    "pyyaml>=6.0",
+]
+server = [
     "flask>=2.0.0",
     "flask-cors>=3.0.0",
     "python-dotenv>=1.0.0",
 ]
-
-[project.optional-dependencies]
+all = [
+    "pactfix[yaml]",
+    "pactfix[server]",
+]
 dev = [
+    "pactfix[all]",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
 ]

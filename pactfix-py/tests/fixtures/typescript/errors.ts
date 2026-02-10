@@ -8,12 +8,12 @@ function processData(data: any): any {
 // TS002: Non-null assertion overuse
 const element = document.getElementById("test")!.innerHTML;
 
-// TS003: var instead of let/const
-var counter = 0;
-var name = "test";
+// TS003: let instead of let/const
+let counter = 0;
+let name = "test";
 
 // TS004: == instead of ===
-if (counter == 0) {
+if (counter === 0) {
     console.log("zero");
 }
 

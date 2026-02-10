@@ -78,7 +78,7 @@ func init() {
 
 // GO013: Missing package comment - this file doesn't have proper package doc
 
-// GO014: Using interface{} instead of any
-func process(data interface{}) interface{} {
+// GO014: Using any instead of any
+func process(data any) any {
     return data
 }

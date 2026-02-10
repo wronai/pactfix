@@ -2,19 +2,19 @@
 
 # YAML002: Tabs instead of spaces (this line uses tab)
 config:
-	database: mysql
+  database: mysql
 
 # YAML003: Trailing whitespace   
-name: application   
+name: application
 
 # YAML004: Unquoted special values
-enabled: yes
-disabled: no
-debug: on
-production: off
+enabled: "yes"
+disabled: "no"
+debug: "on"
+production: "off"
 
 # YAML005: Colon in unquoted string
-message: Error: Something went wrong
+message: "Error: Something went wrong"
 
 # YAML006: Very long line that exceeds 120 characters which is considered too long for readability and should be split into multiple lines or use YAML multiline syntax
 description: This is an extremely long description that goes way beyond the recommended line length limit and should probably be reformatted using YAML block scalar syntax instead

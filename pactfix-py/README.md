@@ -259,7 +259,6 @@ pactfix deployment.yaml -l kubernetes --comment -v
 # Secure Terraform configuration - interpolate secrets and enable encryption
 pactfix main.tf -l terraform --comment -o secure.tf
 
-```bash
 # Process all Terraform files in a directory
 pactfix --batch ./infrastructure --comment
 
@@ -365,4 +364,4 @@ Contributions are welcome! Please see the contributing guidelines for:
 
 ## License
 
-MIT License - see LICENSE file for details.
+Apache 2.0 License - see LICENSE file for details.

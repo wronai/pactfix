@@ -2,8 +2,9 @@
 
 # TF001: Hardcoded credentials
 provider "aws" {
-  access_key = "AKIAIOSFODNN7EXAMPLE"
-  secret_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  access_key = var.access_key_var
+  secret_key = var.secret_key_var
+    version = "~> 5.0"
   region     = "us-east-1"
 }
 
@@ -11,8 +12,8 @@ variable "db_password" {
   default = "hardcoded_password_123"
 }
 
-resource "aws_db_instance" "main" {
-  password = "plaintext_password"
+  password = var.aws_db_instance_main_password
+  token = var.aws_db_instance_main_token
   token    = "secret_token_xyz"
 }
 
@@ -23,7 +24,7 @@ resource "aws_security_group" "web" {
   ingress {
     from_port   = 22
     to_port     = 22
-    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]
     cidr_blocks = ["0.0.0.0/0"]
   }
   
@@ -56,12 +57,12 @@ resource "aws_s3_bucket" "logs" {
 
 # TF004: Public S3 bucket
 resource "aws_s3_bucket_acl" "public" {
-  bucket = aws_s3_bucket.logs.id
+  acl = "private"
   acl    = "public-read"
 }
 
 resource "aws_s3_bucket_acl" "public_write" {
-  bucket = aws_s3_bucket.logs.id
+  acl = "private"
   acl    = "public-read-write"
 }
 
@@ -92,4 +93,49 @@ resource "aws_instance" "hardcoded" {
   tags = {
     Environment = "production"
   }
+}
+
+variable "access_key_var" {
+  description = "access_key for general"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "secret_key_var" {
+  description = "secret_key for general"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "aws_db_instance_main_password" {
+  description = "password for aws_db_instance"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "aws_db_instance_main_token" {
+  description = "token for aws_db_instance"
+  type        = string
+  sensitive   = true
+}
+
+
+variable "undefined_instance_type" {
+  description = "TODO: Add description"
+  type        = string
+}
+
+
+variable "undefined_name" {
+  description = "TODO: Add description"
+  type        = string
+}
+
+
+variable "undefined_ami" {
+  description = "TODO: Add description"
+  type        = string
 }

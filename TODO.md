@@ -1,27 +1,45 @@
-chcialbym dodatkowo testowac roznego typu pliki jak docker, SQl, itd, ktore wymagaja kontekstu, chodzi o mozliwosc generowania tego mock i wskazywac wady, naawet nie majac pewlnego srodowiska, tworzac maksymalna ilosc sorodowiska, jak wynika z tego pliku i wskazac bledy samej konfiguracji, pliku z DSL, konfiguracyjnego roznych formatow IaC, itd
+# TODO
 
-popraw wygląd, niestety nie wykrywa wszystkich błedów
-Jak w ciągu najszybszego czasu prztetsowac wszystkie te projekty examples/*/*?
-Stworz testy e2e, i zaktualizuj projekt, aby szybko wsazywął błędy, syzbciej niż uruhcomienie debuggera live z konkretnego kodu, jak to zrobić?
+## Priorytety
 
+### 🔴 Wysokie
 
-dodaj testowanie poprzez make test wszystkich aplikacji, forntend, backend pactfix
-make test
-make: *** No rule to make target 'test'.  Stop.
+- [ ] **Refaktoryzacja `analyzer.py`** — monolityczny plik (58KB) wymaga rozbicia na mniejsze moduły
+- [ ] **Synchronizacja wersji** — VERSION, pyproject.toml i package.json powinny być spójne
+- [ ] **Testy E2E** — rozbudować testy Playwright o nowe scenariusze (analiza wielu języków)
+- [ ] **`make test`** — upewnić się, że `make test` działa dla frontend, backend i pactfix-py ✅ (done)
+- [ ] **`make publish`** — publikacja paczki Python pactfix na PyPI
 
-oraz make publish, publikacja  paczki python pactifx
-popraw wygląd usługi web http://localhost:8080/
-aby lepiej działał była bardziej kompatowna na urządzeniach mobilnych, z mozliwoscią generowania podczas edycji zcacheowanej tresci, aby to bylo dostepne do udostepniania, za kazdym razem jak ktos wrzuca i zmienia to jest generowany nowy hash, pozwalajacy na uzywanie linka w ciagu 24h, apotem wygasa, stworz traefik i mozliwosc uruchomienia tego rozwiazania na zdalnym server dodaj oblsuge .env z szyfrowaniem domeny lokalnej i zdalenj, z uzyciem k3s, aby mozna bylo latwo lokalnie i zdalnie uruchamiac ten projekt
+### 🟡 Średnie
 
+- [ ] **Kontekstowe testowanie DSL** — generowanie mock środowisk dla Docker, SQL, Terraform, Kubernetes itp.; wykrywanie błędów konfiguracji nawet bez pełnego środowiska
+- [ ] **Poprawa wykrywania błędów** — nie wszystkie błędy są wykrywane; rozbudowa reguł per język
+- [ ] **Responsywność UI** — poprawa widoku webowego (`http://localhost:8081/`) na urządzeniach mobilnych
+- [ ] **Cachowanie snippetów** — generowanie hashu przy każdej edycji, link ważny 24h, potem wygasa
+- [ ] **Batch testing examples** — szybkie testowanie wszystkich projektów z `examples/*/*`
+
+### 🟢 Niskie / Przyszłość
+
+- [ ] **Traefik + K3s** — możliwość uruchamiania na zdalnym serwerze z obsługą `.env`, szyfrowanie domeny
+- [ ] **AI-powered explanations** — integracja z llama.cpp do objaśnień poprawek
+- [ ] **VSCode extension** — plugin do edytora
+- [ ] **Collaborative debugging** — sesje wspólnego debugowania w czasie rzeczywistym
+- [ ] **Integracja z GitHub PRs** — automatyczne komentarze w pull requestach
+
+---
+
+## Szybki start
+
+```bash
 # Instalacja
 pip install -e pactfix-py
 
-# Użycie
-[faulty.py](examples/python/faulty.py)
+# Analiza pliku Python
 python -m pactfix examples/python/faulty.py -o output.py --log-file log.json -v
 
-[faulty.sh](examples/bash/faulty.sh)
+# Analiza pliku Bash
 python -m pactfix examples/bash/faulty.sh -o output.sh --log-file log.json -v
 
-
+# Pipe z komentarzami
 cat examples/python/faulty.py | pactfix -o output.py --comment
+```

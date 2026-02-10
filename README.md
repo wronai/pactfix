@@ -74,7 +74,7 @@ brew install shellcheck           # macOS
 # Clone and run
 git clone https://github.com/wronai/pactown-debug.git
 cd pactown-debug
-pip install -r requirements.txt
+pip install -e pactfix-py
 python3 server.py
 ```
 
@@ -287,7 +287,7 @@ Health check endpoint.
 ```json
 {
   "status": "healthy",
-  "version": "1.2.0",
+  "version": "1.0.5",
   "features": {
     "shellcheck": false,
     "bash_analysis": true,
@@ -390,7 +390,6 @@ pactown-debug/
 ├── docker-compose.yml     # Docker Compose config
 ├── Makefile              # Build and test targets
 ├── playwright.config.ts  # Playwright configuration
-├── requirements.txt      # Python dependencies
 └── README.md             # This file
 ```
 
@@ -494,8 +493,7 @@ git clone https://github.com/wronai/pactown-debug.git
 cd pactown-debug
 
 # Install dependencies
-pip install -r requirements.txt
-cd pactfix-py && pip install -e .[dev] && cd ..
+pip install -e pactfix-py[dev]
 
 # Install playwright browsers
 npx playwright install
@@ -510,7 +508,7 @@ make test-pactfix   # CLI tests
 
 ## 📄 License
 
-Apache 2.0 License - Softreck © 2026
+Apache 2.0 License © 2026 Pactown Team
 
 ---
 

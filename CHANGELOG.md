@@ -1,40 +1,3 @@
-## [1.0.5] - 2026-01-29
-
-### Summary
-
-refactor(docs): code quality metrics with 6 supporting modules
-
-### Docs
-
-- docs: update PYPI.md
-
-### Other
-
-- update pactfix-py/pactfix/analyzers/docker_compose.py
-- update pactfix-py/pactfix/analyzers/kubernetes.py
-- update pactfix-py/pyproject.toml
-
-
-## [1.0.4] - 2026-01-29
-
-### Summary
-
-refactor(core): cleaner code architecture
-
-### Changes
-
-- update playwright.config.ts
-
-## [1.0.3] - 2026-01-29
-
-### Summary
-
-docs(docs): document Changelog, [1.2.0] - 2026-01-29, Added and 7 more
-
-### Changes
-
-- docs: update README
-
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -42,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2026-01-29
+## [1.0.5] - 2026-01-29
+
+### Changed
+- Refactored Docker Compose and Kubernetes analyzers
+- Updated PYPI.md documentation
+- Code quality metrics improvements with 6 supporting modules
+
+## [1.0.4] - 2026-01-29
+
+### Changed
+- Refactored core code architecture for better maintainability
+- Updated Playwright E2E test configuration
+
+## [1.0.3] - 2026-01-29
 
 ### Added
 - GitLab CI support with dedicated analyzer
@@ -52,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation with examples
 - Test coverage badges and GitHub stats
 - Interactive table of contents in README
-- Multi-language support status table
+- Multi-language support status table (24+ languages)
 
 ### Fixed
 - Quote positioning detection in bash command substitutions (SC1073)
@@ -64,12 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clear input functionality
 
 ### Improved
-- API documentation with all endpoints (/api/analyze, /api/health, /api/snippet)
+- API documentation with all endpoints (`/api/analyze`, `/api/health`, `/api/snippet`)
 - Development setup instructions
 - Project structure documentation
 - Docker sandbox testing documentation
 
-## [1.1.0] - 2026-01-28
+## [1.0.2] - 2026-01-29
 
 ### Added
 - Real-time code analysis with debouncing
@@ -85,15 +61,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial UI responsiveness issues
 - Basic syntax highlighting
 
+## [1.0.1] - 2026-01-29
+
+### Changed
+- Updated Makefile build targets
+- Updated pactfix sandbox module
+- Updated sandbox test scripts
+- Updated git commit helper
+
 ## [1.0.0] - 2026-01-20
 
 ### Added
 - Initial release
-- Basic bash/shell analysis
-- ShellCheck integration
-- Web-based UI
-- Docker support
-- API endpoints for analysis
+- Basic bash/shell analysis with ShellCheck integration
+- Python code analysis (print, except, mutable defaults, == None)
+- Web-based UI with real-time feedback
+- Docker support and containerized deployment
+- API endpoints for code analysis (`/api/analyze`, `/api/health`, `/api/snippet`)
 
 ---
 
@@ -108,39 +92,6 @@ docker-compose up -d
 ### From Source
 ```bash
 git pull origin main
-pip install -r requirements.txt
+pip install -e pactfix-py
 python3 server.py
 ```
-
----
-
-## Migration Guide
-
-### v1.0.x → v1.1.x
-- No breaking changes
-- New features are opt-in
-- Existing API endpoints remain compatible
-
-### v1.1.x → v1.2.x
-- Enhanced language detection may identify files differently
-- New analyzers for GitLab CI and Jenkinsfile
-- Test structure updated (pytest.ini modified)
-- update pactfix-py/tests/fixtures/terraform/main.tf
-- update pactfix-py/tests/test_analyzer.py
-- update playwright-report/index.html
-
-## [1.0.1] - 2026-01-29
-
-- docs: update CHANGELOG.md
-- build: update Makefile
-- chore: update version
-- update pactfix-py/pactfix/sandbox.py
-- update pactfix-py/scripts/test-sandboxes.sh
-- update scripts/git_commit_helper.py
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
